@@ -1,0 +1,626 @@
+{
+  "repo": "duongtugiang/textmate-swift",
+  "milestones": [
+    "Phase 0",
+    "Phase 1",
+    "Phase 2",
+    "Phase 3",
+    "Phase 4"
+  ],
+  "issues": [
+    {
+      "id": "0.S1",
+      "kind": "story",
+      "title": "One-command build & test with green CI badge",
+      "milestone": "Phase 0",
+      "effort": "S",
+      "labels": ["kind/story", "effort/S", "epic/phase-0", "ci/cd"],
+      "depends_on": [],
+      "gate": "CI green on main",
+      "story": "As a contributor, I want to build the project and run all tests with a single command and see a green CI status, so that I can develop with confidence.",
+      "acceptance_criteria": [
+        "`swift build` succeeds from the repo root",
+        "`swift test` runs all suites, including ported ones",
+        "CI badge in the README shows main's status",
+        "Commands documented in CONTRIBUTING.md"
+      ]
+    },
+    {
+      "id": "0.S2",
+      "kind": "story",
+      "title": "Run the ported TextMate core tests against the new engine",
+      "milestone": "Phase 0",
+      "effort": "S",
+      "labels": ["kind/story", "effort/S", "epic/phase-0", "gate/tests"],
+      "depends_on": ["0.T3"],
+      "gate": "storage tests green (9/9)",
+      "story": "As a contributor, I want to run the original TextMate core tests (ported) against the Swift engine, so that I know the port is behaviorally faithful.",
+      "acceptance_criteria": [
+        "Ported storage + indexed_map tests run under `swift test`",
+        "A failing ported test fails CI",
+        "Test matrix (docs/test-matrix.md) shows per-suite status",
+        "No test is silently skipped"
+      ]
+    },
+    {
+      "id": "0.T1",
+      "kind": "task",
+      "title": "SwiftPM skeleton: TextCore library + tests + executable",
+      "milestone": "Phase 0",
+      "effort": "S",
+      "labels": ["kind/task", "effort/S", "epic/phase-0"],
+      "depends_on": [],
+      "gate": "n/a",
+      "acceptance_criteria": [
+        "Package.swift at repo root with a `TextCore` library target",
+        "Test target wired to the library",
+        "Executable target (smoke CLI)",
+        "`swift build` and `swift test` green",
+        "`.build/` ignored"
+      ]
+    },
+    {
+      "id": "0.T2",
+      "kind": "task",
+      "title": "Swift piece-tree storage (insert/erase/substring, line index)",
+      "milestone": "Phase 0",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-0"],
+      "depends_on": ["0.T1"],
+      "gate": "n/a (verified by 0.T3)",
+      "acceptance_criteria": [
+        "Insert/erase/substring with correct offsets",
+        "Line index maintained across edits",
+        "UTF-16 and character offsets supported",
+        "Passes the ported storage tests (0.T3)"
+      ]
+    },
+    {
+      "id": "0.T3",
+      "kind": "task",
+      "title": "Port buffer/t_storage.cc + t_indexed_map.cc (9 tests) to green",
+      "milestone": "Phase 0",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-0", "gate/tests"],
+      "depends_on": ["0.T2"],
+      "gate": "9/9 (5 storage + 4 indexed_map)",
+      "acceptance_criteria": [
+        "All 5 storage and 4 indexed_map cases ported to XCTest",
+        "Cases translated verbatim where possible; adaptations recorded in the matrix",
+        "Counts match docs/test-matrix.md",
+        "All green under `swift test`"
+      ]
+    },
+    {
+      "id": "0.T4",
+      "kind": "task",
+      "title": "Undo engine (command stack, coalescing)",
+      "milestone": "Phase 0",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-0"],
+      "depends_on": ["0.T2"],
+      "gate": "n/a (verified via editor cases in 2.T2)",
+      "acceptance_criteria": [
+        "Undo/redo command stack over the buffer",
+        "Adjacent typing coalesces into one undo step",
+        "Bounded history size",
+        "API usable from the UI layer later"
+      ]
+    },
+    {
+      "id": "0.T5",
+      "kind": "task",
+      "title": "Test-compatibility matrix: inventory all 88 files / 291+ cases, classify",
+      "milestone": "Phase 0",
+      "effort": "S",
+      "labels": ["kind/task", "effort/S", "epic/phase-0", "gate/tests"],
+      "depends_on": [],
+      "gate": "matrix 100% accounted",
+      "acceptance_criteria": [
+        "Matrix lists every framework suite with case counts",
+        "Each suite classified: port now / AppKit-bound / C++-internal / out-of-scope",
+        "Per-phase gate targets defined",
+        "Linked from ROADMAP.md"
+      ]
+    },
+    {
+      "id": "0.T6",
+      "kind": "task",
+      "title": "Arm CI pipeline (swift build + swift test, guarded)",
+      "milestone": "Phase 0",
+      "effort": "S",
+      "labels": ["kind/task", "effort/S", "epic/phase-0", "ci/cd"],
+      "depends_on": ["0.T1"],
+      "gate": "CI green",
+      "acceptance_criteria": [
+        "ci.yml runs on push + PR",
+        "Guarded until Package.swift exists (stays green today)",
+        "Green on main",
+        "Badge in README"
+      ]
+    },
+    {
+      "id": "1.S1",
+      "kind": "story",
+      "title": "Type and delete text; cursor follows edits",
+      "milestone": "Phase 1",
+      "effort": "M",
+      "labels": ["kind/story", "effort/M", "epic/phase-1", "gate/tests"],
+      "depends_on": ["1.T1"],
+      "gate": "buffer/text .cc suites green",
+      "story": "As a user, I want to type and delete text with the cursor following my edits, so that I can compose a document naturally.",
+      "acceptance_criteria": [
+        "Typing inserts at the caret",
+        "Backspace/delete removes text",
+        "Caret tracks edits correctly",
+        "Multi-byte UTF-8 handled",
+        "10k-character inserts stay responsive"
+      ]
+    },
+    {
+      "id": "1.S2",
+      "kind": "story",
+      "title": "Undo/redo my edits (⌘Z / ⇧⌘Z)",
+      "milestone": "Phase 1",
+      "effort": "M",
+      "labels": ["kind/story", "effort/M", "epic/phase-1"],
+      "depends_on": ["0.T4"],
+      "gate": "n/a (UI wiring in 2.S4)",
+      "story": "As a user, I want to undo and redo my edits with the keyboard, so that I can recover from mistakes.",
+      "acceptance_criteria": [
+        "⌘Z undoes the last edit",
+        "⇧⌘Z redoes it",
+        "Undo restores text and caret position",
+        "A new edit after undo clears the redo stack"
+      ]
+    },
+    {
+      "id": "1.T1",
+      "kind": "task",
+      "title": "Position mapping: line/column ↔ UTF-16 offset",
+      "milestone": "Phase 1",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-1"],
+      "depends_on": ["0.T2"],
+      "gate": "n/a",
+      "acceptance_criteria": [
+        "Line/column ↔ UTF-16 offset conversion",
+        "Binary-search lookup (O(log n))",
+        "Correct for empty and trailing newlines",
+        "Handles CRLF line endings"
+      ]
+    },
+    {
+      "id": "1.T2",
+      "kind": "task",
+      "title": "Port remaining pure-C++ buffer tests + text utf8/decode/encode/ctype (~20) to green",
+      "milestone": "Phase 1",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-1", "gate/tests"],
+      "depends_on": ["0.T3", "1.T1"],
+      "gate": "~20/~20",
+      "acceptance_criteria": [
+        "Remaining buffer .cc cases ported",
+        "text utf8/decode/encode/ctype suites ported",
+        "All green under `swift test`",
+        "Matrix updated"
+      ]
+    },
+    {
+      "id": "1.T3",
+      "kind": "task",
+      "title": "UTF-8 validation & normalize utilities (spec: text/utf8, text/transcode)",
+      "milestone": "Phase 1",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-1"],
+      "depends_on": ["1.T2"],
+      "gate": "n/a",
+      "acceptance_criteria": [
+        "UTF-8 validation rejects invalid sequences",
+        "NFC normalization supported",
+        "Semantics match text/utf8 and text/transcode",
+        "Unit tested"
+      ]
+    },
+    {
+      "id": "2.S1",
+      "kind": "story",
+      "title": "See a file's text rendered in a window",
+      "milestone": "Phase 2",
+      "effort": "L",
+      "labels": ["kind/story", "effort/L", "epic/phase-2", "gate/tests"],
+      "depends_on": ["1.T1"],
+      "gate": "layout tests green (2.T2)",
+      "story": "As a user, I want to open a text file and see its contents rendered in a window, so that I can start reading code.",
+      "acceptance_criteria": [
+        "Window shows document glyphs from the buffer",
+        "Per-line layout from the text engine (no fake rendering)",
+        "Font and line-spacing configurable in one place",
+        "A 10 MB file renders without freezing the UI"
+      ]
+    },
+    {
+      "id": "2.S2",
+      "kind": "story",
+      "title": "Select text with mouse and keyboard",
+      "milestone": "Phase 2",
+      "effort": "L",
+      "labels": ["kind/story", "effort/L", "epic/phase-2", "gate/tests"],
+      "depends_on": ["2.S1"],
+      "gate": "editor selection tests green (2.T2)",
+      "story": "As a user, I want to select text with the mouse and keyboard, so that I can copy or act on ranges.",
+      "acceptance_criteria": [
+        "Click places the caret",
+        "Drag selects a range",
+        "Shift+arrows extend the selection",
+        "⌘A selects all",
+        "Double-click selects a word"
+      ]
+    },
+    {
+      "id": "2.S3",
+      "kind": "story",
+      "title": "Scroll smoothly through large documents (≥10 MB)",
+      "milestone": "Phase 2",
+      "effort": "M",
+      "labels": ["kind/story", "effort/M", "epic/phase-2"],
+      "depends_on": ["2.S1"],
+      "gate": "n/a",
+      "story": "As a user, I want to scroll through large documents smoothly, so that I can navigate long files.",
+      "acceptance_criteria": [
+        "Scrollbar reflects the full document extent",
+        "Scrolling stays smooth at 10 MB",
+        "Rendering is virtualized (only visible lines drawn)"
+      ]
+    },
+    {
+      "id": "2.S4",
+      "kind": "story",
+      "title": "Undo/redo wired into the UI",
+      "milestone": "Phase 2",
+      "effort": "S",
+      "labels": ["kind/story", "effort/S", "epic/phase-2"],
+      "depends_on": ["1.S2", "2.S2"],
+      "gate": "n/a",
+      "story": "As a user, I want undo/redo available from the menu and keyboard, so that I can recover mistakes without losing work.",
+      "acceptance_criteria": [
+        "⌘Z / ⇧⌘Z work in the text view",
+        "Edit menu shows Undo/Redo with correct enabled state",
+        "Caret restored on undo"
+      ]
+    },
+    {
+      "id": "2.S5",
+      "kind": "story",
+      "title": "Cut a release with one tag → signed, notarized .dmg",
+      "milestone": "Phase 2",
+      "effort": "S",
+      "labels": ["kind/story", "effort/S", "epic/phase-2", "ci/cd"],
+      "depends_on": ["2.T4"],
+      "gate": "n/a",
+      "story": "As a maintainer, I want to cut a release by pushing a tag, so that users get a signed, notarized installer without manual steps.",
+      "acceptance_criteria": [
+        "Pushing a v* tag triggers the release pipeline",
+        "Produces a signed + notarized .dmg (when secrets are set)",
+        "GitHub Release created with auto changelog",
+        "Unsigned artifact-only fallback works when secrets are absent"
+      ]
+    },
+    {
+      "id": "2.T1",
+      "kind": "task",
+      "title": "XcodeGen project.yml app target for the AppKit UI",
+      "milestone": "Phase 2",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-2"],
+      "depends_on": ["0.T1"],
+      "gate": "n/a",
+      "acceptance_criteria": [
+        "project.yml generates TextMateSwift.xcodeproj",
+        "App target builds a runnable .app",
+        "App links the TextCore library",
+        "`xcodegen generate` documented in CONTRIBUTING.md"
+      ]
+    },
+    {
+      "id": "2.T2",
+      "kind": "task",
+      "title": "Port layout (10) + editor (9) tests + t_buffer.mm GUI suites to green",
+      "milestone": "Phase 2",
+      "effort": "XL",
+      "labels": ["kind/task", "effort/XL", "epic/phase-2", "gate/tests"],
+      "depends_on": ["2.T1"],
+      "gate": "19+/19+ (layout 10 + editor 9) plus t_buffer.mm cases",
+      "acceptance_criteria": [
+        "layout basic_tree suites (3 files) ported against the Swift equivalent",
+        "gui_layout.mm adapted (AppKit drift documented)",
+        "editor 9 cases ported",
+        "t_buffer.mm cases ported/adapted",
+        "Adaptations recorded in docs/test-matrix.md",
+        "All green"
+      ]
+    },
+    {
+      "id": "2.T3",
+      "kind": "task",
+      "title": "Rendering perf check against C++ layout baseline (feeds ADR 0002)",
+      "milestone": "Phase 2",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-2"],
+      "depends_on": ["2.T2"],
+      "gate": "n/a",
+      "acceptance_criteria": [
+        "Benchmark harness for render + layout at 10 MB",
+        "Comparison against the C++ layout baseline",
+        "Results documented",
+        "ADR 0002 records the bridge decision (Swift-first vs C++ bridge)"
+      ]
+    },
+    {
+      "id": "2.T4",
+      "kind": "task",
+      "title": "CD pipeline: tag → xcodebuild release → codesign → notarize → .dmg → GitHub Release",
+      "milestone": "Phase 2",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-2", "ci/cd"],
+      "depends_on": ["2.T1"],
+      "gate": "n/a",
+      "acceptance_criteria": [
+        "release.yml builds the Release configuration",
+        "Codesigns with Developer ID (when cert secrets set)",
+        "Notarizes and staples (when Apple secrets set)",
+        "Packages a .dmg and publishes a GitHub Release",
+        "Required secrets documented in README"
+      ]
+    },
+    {
+      "id": "3.S1",
+      "kind": "story",
+      "title": "Open a file (⌘O, picker, common encodings)",
+      "milestone": "Phase 3",
+      "effort": "M",
+      "labels": ["kind/story", "effort/M", "epic/phase-3", "gate/tests"],
+      "depends_on": ["1.S1"],
+      "gate": "encoding/transcode tests green (3.T2)",
+      "story": "As a user, I want to open a text file from disk, so that I can work with my own documents.",
+      "acceptance_criteria": [
+        "⌘O opens the file picker",
+        "UTF-8 and common encodings detected and decoded",
+        "Content appears in the buffer",
+        "Read errors handled gracefully",
+        "Large files open without blocking the UI"
+      ]
+    },
+    {
+      "id": "3.S2",
+      "kind": "story",
+      "title": "Save my changes (⌘S, dirty-state, unsaved-close prompt)",
+      "milestone": "Phase 3",
+      "effort": "M",
+      "labels": ["kind/story", "effort/M", "epic/phase-3"],
+      "depends_on": ["3.S1"],
+      "gate": "n/a",
+      "story": "As a user, I want to save my changes, so that my edits persist on disk.",
+      "acceptance_criteria": [
+        "⌘S saves the document",
+        "Dirty indicator (•) in the window title",
+        "Closing an unsaved document prompts",
+        "Save As supported",
+        "Writes are atomic (no partial files)"
+      ]
+    },
+    {
+      "id": "3.S3",
+      "kind": "story",
+      "title": "Work with multiple files via tabs/windows",
+      "milestone": "Phase 3",
+      "effort": "M",
+      "labels": ["kind/story", "effort/M", "epic/phase-3"],
+      "depends_on": ["3.S1"],
+      "gate": "n/a",
+      "story": "As a user, I want to work with several files at once, so that I can compare and edit across documents.",
+      "acceptance_criteria": [
+        "Multiple documents open in tabs",
+        "Switching tabs preserves each document's state",
+        "Per-document undo stacks",
+        "⌘W closes the current document"
+      ]
+    },
+    {
+      "id": "3.T1",
+      "kind": "task",
+      "title": "Document controller: open/save lifecycle, dirty tracking",
+      "milestone": "Phase 3",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-3"],
+      "depends_on": ["3.S1"],
+      "gate": "n/a",
+      "acceptance_criteria": [
+        "Open → edit → save → close lifecycle",
+        "Dirty-state tracking",
+        "Encoding round-trip preserved on save",
+        "Window-restoration hooks"
+      ]
+    },
+    {
+      "id": "3.T2",
+      "kind": "task",
+      "title": "Port encoding/transcode tests + relevant io/file suites to green",
+      "milestone": "Phase 3",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-3", "gate/tests"],
+      "depends_on": ["3.T1"],
+      "gate": "encoding/transcode + io/file subsets",
+      "acceptance_criteria": [
+        "t_transcode / t_encode / text decode subset ported",
+        "Relevant io/path and file tests ported",
+        "Matrix updated",
+        "All green"
+      ]
+    },
+    {
+      "id": "4.S1",
+      "kind": "story",
+      "title": "Line-number gutter",
+      "milestone": "Phase 4",
+      "effort": "S",
+      "labels": ["kind/story", "effort/S", "epic/phase-4"],
+      "depends_on": ["2.S1"],
+      "gate": "n/a",
+      "story": "As a user, I want to see line numbers beside the text, so that I can navigate and reference lines.",
+      "acceptance_criteria": [
+        "Numbers align with lines",
+        "Follow scrolling",
+        "Clicking a number selects the line"
+      ]
+    },
+    {
+      "id": "4.S2",
+      "kind": "story",
+      "title": "Syntax highlighting from .tmLanguage grammars",
+      "milestone": "Phase 4",
+      "effort": "XL",
+      "labels": ["kind/story", "effort/XL", "epic/phase-4", "gate/tests"],
+      "depends_on": ["4.T1"],
+      "gate": "parse + scope tests green (4.T1)",
+      "story": "As a user, I want code to be syntax-highlighted, so that I can read code faster.",
+      "acceptance_criteria": [
+        "Loads .tmLanguage grammars",
+        "Scope-based styling",
+        "Re-parses incrementally on edit",
+        "Large files stay responsive"
+      ]
+    },
+    {
+      "id": "4.S3",
+      "kind": "story",
+      "title": "Code folding",
+      "milestone": "Phase 4",
+      "effort": "L",
+      "labels": ["kind/story", "effort/L", "epic/phase-4"],
+      "depends_on": ["4.S2"],
+      "gate": "n/a",
+      "story": "As a user, I want to fold and unfold code regions, so that I can focus on the relevant parts.",
+      "acceptance_criteria": [
+        "Fold ranges derived from the grammar",
+        "Toggle via gutter/menu",
+        "Fold indicators shown",
+        "Fold state persists per document"
+      ]
+    },
+    {
+      "id": "4.S4",
+      "kind": "story",
+      "title": "Find & replace",
+      "milestone": "Phase 4",
+      "effort": "L",
+      "labels": ["kind/story", "effort/L", "epic/phase-4"],
+      "depends_on": ["2.S2"],
+      "gate": "n/a",
+      "story": "As a user, I want to find and replace text, so that I can locate and update occurrences quickly.",
+      "acceptance_criteria": [
+        "Find bar with next/prev navigation",
+        "Regular-expression support",
+        "Replace and replace-all",
+        "Match highlighting",
+        "Incremental search"
+      ]
+    },
+    {
+      "id": "4.S5",
+      "kind": "story",
+      "title": "Snippets",
+      "milestone": "Phase 4",
+      "effort": "L",
+      "labels": ["kind/story", "effort/L", "epic/phase-4"],
+      "depends_on": ["4.S2"],
+      "gate": "n/a",
+      "story": "As a user, I want tab-triggered snippets, so that I can insert boilerplate quickly.",
+      "acceptance_criteria": [
+        "Tab triggers a snippet",
+        "Placeholders navigable with Tab",
+        "Mirror fields update together",
+        "Escaped characters supported"
+      ]
+    },
+    {
+      "id": "4.S6",
+      "kind": "story",
+      "title": "Bundles & preferences",
+      "milestone": "Phase 4",
+      "effort": "XL",
+      "labels": ["kind/story", "effort/XL", "epic/phase-4"],
+      "depends_on": ["4.S2"],
+      "gate": "n/a",
+      "story": "As a user, I want preferences and bundles, so that I can customize the editor to my workflow.",
+      "acceptance_criteria": [
+        "Bundle loading (snippets, commands, key bindings)",
+        "Preferences window persists settings",
+        "Sensible defaults"
+      ]
+    },
+    {
+      "id": "4.T1",
+      "kind": "task",
+      "title": "Port regexp (41) + scope (13) + parse (4) tests to green",
+      "milestone": "Phase 4",
+      "effort": "XL",
+      "labels": ["kind/task", "effort/XL", "epic/phase-4", "gate/tests"],
+      "depends_on": ["4.T2"],
+      "gate": "58/58 (regexp 41 + scope 13 + parse 4)",
+      "acceptance_criteria": [
+        "regexp 41 cases ported (Onigmo semantics matched)",
+        "scope 13 cases ported",
+        "parse 4 cases ported",
+        "Matrix updated",
+        "All green"
+      ]
+    },
+    {
+      "id": "4.T2",
+      "kind": "spike",
+      "title": "Grammar-engine spike: Onigmo port vs Swift regex strategy",
+      "milestone": "Phase 4",
+      "effort": "L",
+      "labels": ["kind/spike", "effort/L", "epic/phase-4", "gate/tests"],
+      "depends_on": [],
+      "gate": "n/a",
+      "acceptance_criteria": [
+        "Spike doc comparing Onigmo port vs Swift Regex approach",
+        "Benchmark on real grammars",
+        "Recommendation with rationale",
+        "ADR 0003 filed"
+      ]
+    },
+    {
+      "id": "4.T3",
+      "kind": "task",
+      "title": "Port bundles (5) tests to green",
+      "milestone": "Phase 4",
+      "effort": "M",
+      "labels": ["kind/task", "effort/M", "epic/phase-4", "gate/tests"],
+      "depends_on": ["4.T2"],
+      "gate": "5/5",
+      "acceptance_criteria": [
+        "5 bundles cases ported",
+        "Matrix updated",
+        "All green"
+      ]
+    },
+    {
+      "id": "4.T4",
+      "kind": "task",
+      "title": "Out-of-scope disposition: document every skipped suite in the matrix",
+      "milestone": "Phase 4",
+      "effort": "S",
+      "labels": ["kind/task", "effort/S", "epic/phase-4", "gate/tests"],
+      "depends_on": ["0.T5"],
+      "gate": "matrix 100% accounted",
+      "acceptance_criteria": [
+        "Every skipped suite listed with rationale",
+        "Matrix 100% accounted (no silent drops)",
+        "Disposition reviewed and merged"
+      ]
+    }
+  ]
+}

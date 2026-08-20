@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        if: hashFiles('project.yml') != ''
+        run: brew install xcodegen
+
+      - name: Generate project
+        if: hashFiles('project.yml') != ''
+        run: xcodegen generate
+
+      - name: Build Release app
+        run: |
+          if [ -f project.yml ]; then
+            xcodebuild -project TextMateSwift.xcodeproj \
+              -scheme TextMateSwift \
+              -configuration Release \
+              -derivedDataPath build \
+              build
+            APP_PATH="build/Build/Products/Release/TextMateSwift.app"
+          else
+            echo "No app target yet — release job will publish an empty placeholder."
+            mkdir -p dist
+            echo "Release pipeline ready; app target lands with Phase 2 (2.T1)." > dist/README.txt
+            exit 0
+          fi
+
+      - name: Package .dmg
+        if: hashFiles('project.yml') != ''
+        run: |
+          mkdir -p dist
+          ditto "build/Build/Products/Release/TextMateSwift.app" "dist/TextMateSwift.app"
+          hdiutil create \
+            -volname TextMateSwift \
+            -srcfolder dist/TextMateSwift.app \
+            -ov -format UDZO \
+            "dist/TextMateSwift-${{ github.ref_name }}.dmg"
+
+      - name: Codesign (Developer ID)
+        if: hashFiles('project.yml') != '' && env.MACOS_CERTIFICATE != ''
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          MACOS_CERTIFICATE_NAME: ${{ secrets.MACOS_CERTIFICATE_NAME }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p temp build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p temp build.keychain
+          security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" -A -t cert -f pkcs12 -k build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
+          codesign --force --options runtime \
+            --sign "$MACOS_CERTIFICATE_NAME" \
+            --keychain build.keychain \
+            "dist/TextMateSwift.app"
+
+      - name: Notarize & staple
+        if: hashFiles('project.yml') != '' && env.APPLE_ID != '' && env.APPLE_TEAM_ID != ''
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          ditto -c -k --keepParent "dist/TextMateSwift.app" "$RUNNER_TEMP/TextMateSwift.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/TextMateSwift.zip" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+          xcrun stapler staple "dist/TextMateSwift.app"
+
+      - name: Re-package .dmg after signing
+        if: hashFiles('project.yml') != '' && env.MACOS_CERTIFICATE != ''
+        run: |
+          rm -f "dist/TextMateSwift-${{ github.ref_name }}.dmg"
+          hdiutil create \
+            -volname TextMateSwift \
+            -srcfolder dist/TextMateSwift.app \
+            -ov -format UDZO \
+            "dist/TextMateSwift-${{ github.ref_name }}.dmg"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

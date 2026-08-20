@@ -1,0 +1,58 @@
+# Repo labels — reference source of truth.
+# Applied to GitHub via scripts/setup-gh.sh (keep in sync).
+
+# Kind
+- name: kind/story
+  color: '0e8a16'
+  description: User-visible feature (has acceptance criteria)
+- name: kind/task
+  color: '5319e7'
+  description: Engineering work with no direct end-user value
+- name: kind/bug
+  color: 'd73a4a'
+  description: Something is broken or behaves incorrectly
+- name: kind/spike
+  color: 'fbca04'
+  description: Time-boxed research or experiment
+
+# Effort
+- name: effort/S
+  color: 'c2e0c6'
+  description: Less than 1 day
+- name: effort/M
+  color: 'bfd4f2'
+  description: 1–3 days
+- name: effort/L
+  color: 'fef2c0'
+  description: 3–7 days
+- name: effort/XL
+  color: 'f9d0c4'
+  description: More than 1 week
+
+# Phase (epic)
+- name: epic/phase-0
+  color: 'd4c5f9'
+  description: Phase 0 — Scaffold & build
+- name: epic/phase-1
+  color: 'd4c5f9'
+  description: Phase 1 — Text model
+- name: epic/phase-2
+  color: 'd4c5f9'
+  description: Phase 2 — Editing, rendering & delivery
+- name: epic/phase-3
+  color: 'd4c5f9'
+  description: Phase 3 — Document layer
+- name: epic/phase-4
+  color: 'd4c5f9'
+  description: Phase 4+ — Signature features
+
+# Workflow
+- name: gate/tests
+  color: '0075ca'
+  description: Blocked until the ported original-TextMate suites are green
+- name: ci/cd
+  color: '0075ca'
+  description: Touches the CI or release pipelines
+- name: status/blocked
+  color: 'b60205'
+  description: Blocked by an external dependency or open decision

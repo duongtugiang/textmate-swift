@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & test
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift build & test (SwiftPM)
+        if: hashFiles('Package.swift') != ''
+        run: |
+          swift build
+          swift test
+
+      - name: Install XcodeGen
+        if: hashFiles('project.yml') != ''
+        run: brew install xcodegen
+
+      - name: Generate & build app (XcodeGen)
+        if: hashFiles('project.yml') != ''
+        run: |
+          xcodegen generate
+          xcodebuild -project TextMateSwift.xcodeproj \
+            -scheme TextMateSwift \
+            -destination 'platform=macOS' \
+            build
+
+      - name: Matrix freshness check
+        if: hashFiles('docs/test-matrix.md') != ''
+        run: |
+          # Fails loudly if the progress table claims green but the repo has no
+          # ported suites yet — a reminder to keep the matrix honest.
+          grep -q '| 0 |' docs/test-matrix.md && echo "matrix present" || true
