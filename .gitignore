@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Xcode / SwiftPM
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+Package.resolved
+
+# Build products
+build/
+*.o
+*.d
