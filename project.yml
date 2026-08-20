@@ -1,0 +1,59 @@
+# XcodeGen project for the TextMateSwift macOS app.
+# Mirrors the SwiftPM layout: a TextCore framework + the app that links it.
+# Regenerate with: xcodegen generate
+# Build with:     xcodebuild -project TextMateSwift.xcodeproj -scheme TextMateSwift -configuration Release build
+name: TextMateSwift
+
+options:
+  bundleIdPrefix: com.textmateswift
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+targets:
+  TextCore:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/TextCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.textmateswift.TextCore
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGNING_REQUIRED: "NO"
+
+  TextMateSwift:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/TextMateSwift
+    dependencies:
+      - target: TextCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.textmateswift.TextMateSwift
+        PRODUCT_NAME: TextMateSwift
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: TextMateSwift
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        ENABLE_HARDENED_RUNTIME: NO
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGNING_REQUIRED: "NO"
+
+schemes:
+  TextMateSwift:
+    build:
+      targets:
+        TextMateSwift: all
+    run:
+      config: Debug
