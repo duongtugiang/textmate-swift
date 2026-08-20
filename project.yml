@@ -9,6 +9,9 @@ options:
   deploymentTarget:
     macOS: "13.0"
   createIntermediateGroups: true
+  # Emit a project format both Xcode 15 (CI, macos-14) and 16 (local) can read.
+  # Default is xcode16_0 (format 77), which Xcode 15's xcodebuild rejects.
+  projectFormat: xcode15_3
 
 targets:
   TextCore:
