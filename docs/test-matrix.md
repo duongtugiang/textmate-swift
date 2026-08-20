@@ -20,7 +20,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` green · `—` not appli
 
 | Framework | Test files | Cases | Classification | Porting task | Status | Notes |
 |---|---|---|---|---|---|---|
-| `buffer` | 3 (`t_buffer.mm`, `t_indexed_map.cc`, `t_storage.cc`) | 27 | Port now (.cc) + AppKit-bound (.mm) | 0.T3 (storage/indexed_map, 9) · 2.T2 (`t_buffer.mm`) | [ ] | `t_storage.cc` = 5 cases, `t_indexed_map.cc` = 4; `.mm` needs AppKit |
+| `buffer` | 3 (`t_buffer.mm`, `t_indexed_map.cc`, `t_storage.cc`) | 27 | Port now (.cc) + AppKit-bound (.mm) | 0.T3 (storage/indexed_map, 9) · 2.T2 (`t_buffer.mm`) | 0.T3: [x] · 2.T2: [ ] | `t_storage.cc` = 5 cases, `t_indexed_map.cc` = 4 — both green (0.T3, 16 ported tests); `.mm` needs AppKit (2.T2) |
 | `text` | 13 (`t_utf8`, `t_decode`, `t_encode`, `t_ctype`, `t_format`, `t_indent`, `t_split`, `t_tokenize`, `t_transcode`, `t_trim`, `t_wrap`, `t_case`, `t_ranker`) | 34 | Port now | 1.T2 (utf8/decode/encode/ctype subset) · rest: Phase 3–4 | [ ] | Split across phases; exact split decided in 1.T2 |
 | `undo` | 0 (no dedicated suite) | 0 | — | verified via `buffer`/`editor` cases | — | Undo behavior covered by ported buffer/editor tests |
 | `scope` | 3 | 13 | Port now | 4.T1 | [ ] | Grammar stack |
@@ -62,7 +62,7 @@ Classification guidance for the full pass:
 
 | Phase | Gate slice | Result |
 |---|---|---|
-| 0 | 9/9 (storage + indexed_map) | pending |
+| 0 | 9/9 (storage + indexed_map) | ✅ green — 16 ported tests + 6 engine tests |
 | 1 | ~20/~20 (buffer .cc + text utf8/decode/encode/ctype) | pending |
 | 2 | 19+/19+ (layout + editor + `t_buffer.mm`) | pending |
 | 3 | encoding/transcode + `io`/`file` subsets | pending |

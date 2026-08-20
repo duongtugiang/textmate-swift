@@ -21,14 +21,14 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 
 | Status | ID | Kind | Title | Effort | Depends on | Gate | Issue |
 |---|---|---|---|---|---|---|---|
-| [ ] | 0.S1 | story | One-command build & test with green CI badge | S | — | CI green | [#1](https://github.com/duongtugiang/textmate-swift/issues/1) |
-| [ ] | 0.S2 | story | Run the ported TextMate core tests against the new engine | S | 0.T3 | storage tests green | [#2](https://github.com/duongtugiang/textmate-swift/issues/2) |
-| [ ] | 0.T1 | task | SwiftPM skeleton: `TextCore` library + tests + executable | S | — | — | [#3](https://github.com/duongtugiang/textmate-swift/issues/3) |
-| [ ] | 0.T2 | task | Swift piece-tree storage (insert/erase/substring, line index) | M | 0.T1 | — | [#4](https://github.com/duongtugiang/textmate-swift/issues/4) |
-| [ ] | 0.T3 | task | Port `buffer/t_storage.cc` + `t_indexed_map.cc` (9 tests) → green | M | 0.T2 | 9/9 | [#5](https://github.com/duongtugiang/textmate-swift/issues/5) |
-| [ ] | 0.T4 | task | Undo engine (command stack, coalescing) | M | 0.T2 | — | [#6](https://github.com/duongtugiang/textmate-swift/issues/6) |
-| [ ] | 0.T5 | task | Test-compatibility matrix: inventory all 88 files / 291+ cases, classify | S | — | — | [#7](https://github.com/duongtugiang/textmate-swift/issues/7) |
-| [ ] | 0.T6 | task | Arm CI pipeline (`swift build` + `swift test`, guarded) | S | 0.T1 | CI green | [#8](https://github.com/duongtugiang/textmate-swift/issues/8) |
+| [x] | 0.S1 | story | One-command build & test with green CI badge | S | — | CI green | [#1](https://github.com/duongtugiang/textmate-swift/issues/1) |
+| [x] | 0.S2 | story | Run the ported TextMate core tests against the new engine | S | 0.T3 | storage tests green | [#2](https://github.com/duongtugiang/textmate-swift/issues/2) |
+| [x] | 0.T1 | task | SwiftPM skeleton: `TextCore` library + tests + executable | S | — | — | [#3](https://github.com/duongtugiang/textmate-swift/issues/3) |
+| [x] | 0.T2 | task | Swift piece-tree storage (insert/erase/substring, line index) | M | 0.T1 | — | [#4](https://github.com/duongtugiang/textmate-swift/issues/4) |
+| [x] | 0.T3 | task | Port `buffer/t_storage.cc` + `t_indexed_map.cc` (9 tests) → green | M | 0.T2 | 9/9 | [#5](https://github.com/duongtugiang/textmate-swift/issues/5) |
+| [x] | 0.T4 | task | Undo engine (command stack, coalescing) | M | 0.T2 | — | [#6](https://github.com/duongtugiang/textmate-swift/issues/6) |
+| [x] | 0.T5 | task | Test-compatibility matrix: inventory all 88 files / 291+ cases, classify | S | — | — | [#7](https://github.com/duongtugiang/textmate-swift/issues/7) |
+| [x] | 0.T6 | task | Arm CI pipeline (`swift build` + `swift test`, guarded) | S | 0.T1 | CI green | [#8](https://github.com/duongtugiang/textmate-swift/issues/8) |
 
 ## Phase 1 — Text model
 
@@ -49,7 +49,7 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 | [ ] | 2.S3 | story | Scroll smoothly through large documents (≥10 MB) | M | 2.S1 | — | [#16](https://github.com/duongtugiang/textmate-swift/issues/16) |
 | [ ] | 2.S4 | story | Undo/redo wired into the UI | S | 1.S2, 2.S2 | — | [#17](https://github.com/duongtugiang/textmate-swift/issues/17) |
 | [ ] | 2.S5 | story | As a maintainer: cut a release with one tag → signed, notarized .dmg | S | 2.T4 | — | [#18](https://github.com/duongtugiang/textmate-swift/issues/18) |
-| [ ] | 2.T1 | task | XcodeGen `project.yml` app target for the AppKit UI | M | 0.T1 | — | [#19](https://github.com/duongtugiang/textmate-swift/issues/19) |
+| [x] | 2.T1 | task | XcodeGen `project.yml` app target for the AppKit UI | M | 0.T1 | — | [#19](https://github.com/duongtugiang/textmate-swift/issues/19) |
 | [ ] | 2.T2 | task | Port `layout` (10) + `editor` (9) tests + `t_buffer.mm` GUI suites → green | XL | 2.T1 | 19+/19+ | [#20](https://github.com/duongtugiang/textmate-swift/issues/20) |
 | [ ] | 2.T3 | task | Rendering perf check against C++ layout baseline (feeds ADR 0002) | M | 2.T2 | — | [#21](https://github.com/duongtugiang/textmate-swift/issues/21) |
 | [ ] | 2.T4 | task | CD pipeline: tag → xcodebuild release → codesign → notarize → .dmg → GitHub Release | M | 2.T1 | — | [#22](https://github.com/duongtugiang/textmate-swift/issues/22) |

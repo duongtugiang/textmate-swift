@@ -18,9 +18,33 @@ Swift-first — is decided at the Phase 2 perf gate).
 
 ## Status
 
-Planning — no buildable app yet. The full backlog (18 stories + 19 tasks across
-5 phases) lives in [GitHub Issues](https://github.com/duongtugiang/textmate-swift/issues);
-the phase index is [ROADMAP.md](ROADMAP.md).
+**Phase 0 complete** — first macOS build works: a bare editor window with New /
+Open / Save / Save As, full text editing (undo, redo, cut, copy, paste, select all),
+and a dirty-state indicator. The Swift text engine (`TextCore`) ships with piece-tree
+storage, undo stack, UTF-8 utilities, and the first ported TextMate test suites green
+(16 ported + 6 engine tests).
+
+The full backlog (18 stories + 19 tasks across 5 phases) lives in
+[GitHub Issues](https://github.com/duongtugiang/textmate-swift/issues); the phase
+index is [ROADMAP.md](ROADMAP.md).
+
+## Build & run
+
+Requirements: Xcode 15+ (macOS 13+ target), [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+
+```sh
+# Engine: build + test
+swift build
+swift test
+
+# App: generate the Xcode project, then build
+xcodegen generate
+xcodebuild -project TextMateSwift.xcodeproj -scheme TextMateSwift -configuration Release build
+open Build/Products/Release/TextMateSwift.app
+```
+
+Note: the demo app currently uses `NSTextView`'s built-in storage; wiring the
+`TextCore` engine into the UI is Phase 1–2 work (issue #11, #14).
 
 ## Project practices
 
@@ -39,12 +63,14 @@ the phase index is [ROADMAP.md](ROADMAP.md).
 ## Layout
 
 ```
-Core/            Swift code (app, UI, document layer)
-Native/          (future) bridged C++ — pending ADR 0002
-docs/decisions/  architecture decision records
-docs/issues/     backlog manifest + issue map
-docs/test-matrix.md   original-TextMate test compatibility tracking
-ROADMAP.md       phases, milestones, gates, and complexity tracking
+Sources/TextCore/        Swift text engine (storage, undo, encoding)
+Sources/TextMateSwift/   AppKit app (window, menu, file actions)
+Tests/TextCoreTests/     ported TextMate suites + engine tests
+project.yml              XcodeGen source of truth (app + framework targets)
+docs/decisions/          architecture decision records
+docs/issues/             backlog manifest + issue map
+docs/test-matrix.md      original-TextMate test compatibility tracking
+ROADMAP.md               phases, milestones, gates, and complexity tracking
 ```
 
 ## License

@@ -18,5 +18,9 @@ Package.resolved
 
 # Build products
 build/
+Build/
 *.o
 *.d
+
+# XcodeGen output (project.yml is the source of truth)
+TextMateSwift.xcodeproj/
