@@ -183,6 +183,39 @@ appended at the bottom, newest last. Source of truth for statuses: the
 <div class="how"><span class="label">How:</span> learned the Swift signatures the hard way (<code>documentClass(forType:)</code>, <code>types</code> not overridable); verified both <code>swift run</code> and the Release .app open an Untitled window and open files.</div>
 </div>
 
+
+<div class="entry">
+<h3>2412915 — feat(core): port the scope framework — scope chain, selectors, exact rank</h3>
+<div class="meta">2026-08-21</div>
+<div class="why"><span class="label">Why:</span> 4.T1's first slice: scope (13) suites gate the grammar engine, and selectors are needed by every later feature (highlighting themes, folding markers, snippets).</div>
+<div class="what"><span class="label">What:</span> <code>TextScope</code> — faithful port of the scope framework: the scope chain, the recursive-descent selector parser, and the exact rank formula with backtracking (<code>match.cc</code>), including the &ldquo;redundant non-BOL match&rdquo; subtlety. All 13 scope tests ported verbatim; suite 81 &rarr; 94.</div>
+<div class="how"><span class="label">How:</span> transliterated <code>scope.h</code>/<code>types.h</code>/<code>parse.cc</code>/<code>match.cc</code>; fixed the rank-nil guard (inner rank locals must start non-nil so scoring always runs) after the path matcher silently skipped scoring.</div>
+</div>
+
+<div class="entry">
+<h3>6559da3 — feat(core): port the grammar engine — Onigmo anchors over ICU + parse loop</h3>
+<div class="meta">2026-08-21</div>
+<div class="why"><span class="label">Why:</span> 4.T2 spike decision + the parse (4) suites of 4.T1: the engine needs Oniguruma anchors ICU lacks, so the spike had to choose between porting Onigmo and emulating over Swift regex.</div>
+<div class="what"><span class="label">What:</span> <code>TextRegex</code> (emulation strategy — <code>\G</code> as an escaped-prefix lookbehind, <code>\A</code>/<code>\z</code> gated by NOTBOS/NOTEOS, <code>^</code>/<code>$</code> via anchorsMatchLines) and <code>TextGrammar</code> (rule/stack model, pattern compilation, includes, and the per-line parse loop with ranked matching, while/begin/end, and nested capture parses). t_anchors (2), t_begin_while (1), t_capture_rules (1) ported verbatim; 98 tests green.</div>
+<div class="how"><span class="label">How:</span> verified every anchor against Onigmo&rsquo;s <code>regexec.c</code> (OP_BEGIN_LINE gated by NOTBOL — never set, so <code>^</code> matches on every line — while <code>\A</code> is NOTBOS-gated) and TextMate&rsquo;s <code>regexp.cc</code> (gpos = nullptr under NOTGPOS). Fixed scope-record ordering to pure chronological (the C++ multimap keeps insertion order; endRule only affects the tracking stack), the update() input scope (the input stack&rsquo;s, not the returned stack&rsquo;s), capture tie-breaking by string key (lockstep merge), and ICU&rsquo;s <code>\A</code>-anchors-to-range-start divergence (search the full string, take the leftmost match at/after <code>from</code>).</div>
+</div>
+
+<div class="entry">
+<h3>4824d2d — feat(app): syntax highlighting from tmLanguage grammars + line gutter</h3>
+<div class="meta">2026-08-21</div>
+<div class="why"><span class="label">Why:</span> the visible payoff of the grammar engine — 4.S2 (highlighting) and 4.S1 (gutter) are the first Phase 4 features in the UI.</div>
+<div class="what"><span class="label">What:</span> <code>SyntaxParser</code> (TextCore) keeps per-line grammar stacks and scope maps with incremental repair (re-parse the edit&rsquo;s affected line range, then continue until the stack converges — the C++ <code>buffer_t</code> repair model). EditorView renders visible lines in per-scope theme colors from the built-in <code>source.simple</code> grammar (comments, strings, numbers, keywords, functions) loaded through the same <code>Grammar(plist:)</code> path real bundles will use. Gutter with line numbers and separator. 102 tests green (4 new SyntaxParserTests).</div>
+<div class="how"><span class="label">How:</span> stack equality per <code>stack_t::operator==</code>; fixed the repair to preserve the converged tail (resize in place instead of truncating) and to take the edit&rsquo;s end line (a multi-line edit can change content beyond the start line, where a naive convergence check would stop too early).</div>
+</div>
+
+<div class="entry">
+<h3>a4becd4 — fix(app): load file content into the editor on open</h3>
+<div class="meta">2026-08-21</div>
+<div class="why"><span class="label">Why:</span> user reported &ldquo;cannot see any text when the demo highlight is opened&rdquo; — NSDocument calls <code>read(from:ofType:)</code> before <code>makeWindowControllers()</code>, so the old read() loop iterated an empty windowControllers array and the decoded text was dropped.</div>
+<div class="what"><span class="label">What:</span> read() now stages the decoded text; makeWindowControllers() hands it to the first window (additional windows share the first&rsquo;s buffer; new documents get an empty buffer). Phase 3 had verified window titles only, never pixels.</div>
+<div class="how"><span class="label">How:</span> verified at the pixel level — captured the window with <code>screencapture -l</code> and histogram-checked the PNG for the theme colors (comment gray, keyword purple) plus body text.</div>
+</div>
+
 <!-- ================= APPEND NEW ENTRIES ABOVE THIS LINE (newest last) ================= -->
 
 </body>
