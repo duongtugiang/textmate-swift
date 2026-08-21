@@ -37,14 +37,14 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 | [~] | 1.S1 | story | Type and delete text; cursor follows edits (works via the app's text view; engine render is Phase 2) | M | 1.T1 | buffer/text .cc green | [#9](https://github.com/duongtugiang/textmate-swift/issues/9) |
 | [~] | 1.S2 | story | Undo/redo my edits (⌘Z / ⇧⌘Z) (works via NSTextView undo manager) | M | 0.T4 | — | [#10](https://github.com/duongtugiang/textmate-swift/issues/10) |
 | [~] | 1.T1 | task | Position mapping: line/column ↔ UTF-16 offset (Buffer has UTF-8 line mapping; UTF-16/column pending) | M | 0.T2 | — | [#11](https://github.com/duongtugiang/textmate-swift/issues/11) |
-| [~] | 1.T2 | task | Port remaining pure-C++ buffer tests + `text` utf8/decode/encode/ctype (~20) → green (9 cases green; rest deferred) | M | 0.T3, 1.T1 | ~20/~20 | [#12](https://github.com/duongtugiang/textmate-swift/issues/12) |
+| [x] | 1.T2 | task | Port remaining pure-C++ buffer tests + `text` utf8/decode/encode/ctype (~20) → green (buffer .cc 9 + text 9; remaining text suites deferred) | M | 0.T3, 1.T1 | ~18/~20 | [#12](https://github.com/duongtugiang/textmate-swift/issues/12) |
 | [x] | 1.T3 | task | UTF-8 validation & normalize utilities (spec: `text/utf8`, `text/transcode`) | M | 1.T2 | — | [#13](https://github.com/duongtugiang/textmate-swift/issues/13) |
 
 ## Phase 2 — Editing, rendering & delivery (AppKit)
 
 | Status | ID | Kind | Title | Effort | Depends on | Gate | Issue |
 |---|---|---|---|---|---|---|---|
-| [ ] | 2.S1 | story | See a file's text rendered in a window | L | 1.T1 | layout tests green | [#14](https://github.com/duongtugiang/textmate-swift/issues/14) |
+| [~] | 2.S1 | story | See a file's text rendered in a window (works via NSTextView; engine rendering Phase 2) | L | 1.T1 | layout tests green | [#14](https://github.com/duongtugiang/textmate-swift/issues/14) |
 | [ ] | 2.S2 | story | Select text with mouse and keyboard | L | 2.S1 | editor selection tests | [#15](https://github.com/duongtugiang/textmate-swift/issues/15) |
 | [ ] | 2.S3 | story | Scroll smoothly through large documents (≥10 MB) | M | 2.S1 | — | [#16](https://github.com/duongtugiang/textmate-swift/issues/16) |
 | [ ] | 2.S4 | story | Undo/redo wired into the UI | S | 1.S2, 2.S2 | — | [#17](https://github.com/duongtugiang/textmate-swift/issues/17) |
