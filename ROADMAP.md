@@ -35,10 +35,11 @@ Phase 2 (2.T1/2.S1/2.S2/2.S3/2.S4/2.T4/2.S5), and **Phase 3 — document layer (
   open/save (UTF-8/16/32 with BOMs, Windows-1252, MacRoman, Latin-1), unsaved-changes
   sheets, dirty tracking; `t_transcode` (8) and `io/t_path` (10) suites ported green.
 
-**Next:** **2.T2 (#20)** — port the `layout` (10) + `editor` (9) test suites against
-the Swift piece-tree/layout equivalents (the `basic_tree` cases map onto the new
-treap storage), then **2.T3 (#21)** perf baseline vs the C++ layout (feeds ADR 0002),
-and the **Phase 4** signature features.
+**Next:** **2.T3 (#21)** — rendering perf baseline vs the C++ layout (feeds ADR
+0002), then the **Phase 4** signature features (grammar/scope/regexp engine,
+bundles, snippets/macros — which also absorbs the dispositioned `editor` suites).
+**2.T2 (#20)** is done: the portable `layout`/`editor` subset is green and the rest
+is dispositioned in the test matrix.
 - **2.S1 (#14)** — engine render delivered (single-pass drawing, ~6 ms full redraw on
   8.4 MB); the 10 MB “renders without freezing” AC is tracked by 2.S3 / #16.
 
@@ -86,7 +87,7 @@ branch protection on `main`, Apple release secrets for the notarized CD leg.
 | [x] | 2.S4 | story | Undo/redo wired into the UI | S | 1.S2, 2.S2 | — | [#17](https://github.com/duongtugiang/textmate-swift/issues/17) | Engine-backed ⌘Z/⇧⌘Z; menu enabled state via validateMenuItem |
 | [x] | 2.S5 | story | As a maintainer: cut a release with one tag → signed, notarized .dmg | S | 2.T4 | — | [#18](https://github.com/duongtugiang/textmate-swift/issues/18) | Pipeline live: `v0.1.0` exercised the unsigned leg; signed+notarized leg awaits Apple release secrets |
 | [x] | 2.T1 | task | XcodeGen `project.yml` app target for the AppKit UI | M | 0.T1 | — | [#19](https://github.com/duongtugiang/textmate-swift/issues/19) | Universal Release `.app`; `projectFormat: xcode15_3` pinned for CI Xcode 15.4 |
-| [ ] | 2.T2 | task | Port `layout` (10) + `editor` (9) tests + `t_buffer.mm` GUI suites → green | XL | 2.T1 | 19+/19+ | [#20](https://github.com/duongtugiang/textmate-swift/issues/20) | `basic_tree` suites ported against the Swift equivalent |
+| [x] | 2.T2 | task | Port `layout` (10) + `editor` (9) tests + `t_buffer.mm` GUI suites → green | XL | 2.T1 | 19+/19+ | [#20](https://github.com/duongtugiang/textmate-swift/issues/20) | Portable subset green: `basic_tree` 8/9 re-expressed against the treap + `t_clipboard` (2)/`t_transform` (1) verbatim = 10 new Swift tests (81 total); `t_marks`/`t_macro`/`t_command`/`t_snippets` + `t_buffer.mm`/`gui_layout.mm` dispositioned in the matrix (Phase-4 frameworks / AppKit) |
 | [ ] | 2.T3 | task | Rendering perf check against C++ layout baseline (feeds ADR 0002) | M | 2.T2 | — | [#21](https://github.com/duongtugiang/textmate-swift/issues/21) | — |
 | [x] | 2.T4 | task | CD pipeline: tag → xcodebuild release → codesign → notarize → .dmg → GitHub Release | M | 2.T1 | — | [#22](https://github.com/duongtugiang/textmate-swift/issues/22) | `release.yml` live; nested-framework signing + spctl + notarize/staple; secrets-guarded |
 

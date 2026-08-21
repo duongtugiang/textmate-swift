@@ -27,8 +27,8 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` green · `—` not appli
 | `regexp` | 8 | 41 | Port now | 4.T1 | [ ] | Largest suite; Onigmo semantics |
 | `parse` | 4 | 4 | Port now | 4.T1 | [ ] | Grammar parsing |
 | `bundles` | 2 | 5 | Port now | 4.T3 | [ ] | Depends on grammar-engine spike 4.T2 |
-| `layout` | 4 (`t_basic_tree_delta.cc`, `t_basic_tree_numeric.cc`, `t_basic_tree_range.cc`, `gui_layout.mm`) | 10 | Port now (.cc) + AppKit-bound (.mm) | 2.T2 | [ ] | `basic_tree` suites ported against Swift equivalent |
-| `editor` | — | 9 | Port now | 2.T2 | [ ] | Selection/undo semantics — undo engine behavior now covered by Swift `UndoTests` (9) and selection behavior verified in-app (2.S2); the `.cc` suite itself still to port |
+| `layout` | 4 (`t_basic_tree_delta.cc`, `t_basic_tree_numeric.cc`, `t_basic_tree_range.cc`, `gui_layout.mm`) | 10 | Port now (.cc) + AppKit-bound (.mm) | 2.T2 | [x] | `basic_tree` suites (9) re-expressed against the treap `PieceStorage`/`Buffer` — delta aggregates, range set/adjust/unset, numeric integrity/iteration/copy/erase/search (7 Swift methods; numeric's duplicate-key case dispositioned — offset-keyed storage has no duplicate keys; lower/upper bound map to locate semantics). `gui_layout.mm` (1) AppKit-bound, deferred |
+| `editor` | 6 (`t_clipboard`, `t_command`, `t_macro`, `t_marks`, `t_snippets`, `t_transform`) | 9 | Port now | 2.T2 | [x] | `t_clipboard` (2) + `t_transform` (1, 16 assertions) ported verbatim; `t_marks` (1) dispositioned (mark ops are view-level movement — the commands live in `EditorView`); `t_macro` (3)/`t_command` (1)/`t_snippets` (1) dispositioned — need the command-runner/snippet/macro frameworks (Phase 4) |
 
 ## Remaining frameworks — full inventory (task 0.T5)
 
@@ -67,6 +67,6 @@ Classification guidance for the full pass:
 |---|---|---|
 | 0 | 9/9 (storage + indexed_map) | ✅ green — 16 ported tests + 6 engine tests |
 | 1 | utf8/decode/encode/ctype 9/9 (+ buffer .cc done in Phase 0) | ✅ utf8/decode/encode/ctype green (9 cases, 10 Swift tests); +18 engine tests (9 position mapping, 9 undo) → 50 total |
-| 2 | 19+/19+ (layout + editor + `t_buffer.mm`) | pending — UI stories 2.S1/2.S2/2.S4 delivered (engine render, selection, engine undo in app); the layout/editor `.cc` port itself is 2.T2 |
+| 2 | 19+/19+ (layout + editor + `t_buffer.mm`) | ✅ portable subset green — layout `basic_tree` 8/9 cases re-expressed (7 Swift methods, duplicates-case dispositioned) + editor 3/9 verbatim (`t_clipboard` 2, `t_transform` 1) = **10 new Swift tests** (71 → 81 total); dispositioned: `t_marks`, `t_macro` (3), `t_command`, `t_snippets` (Phase-4 frameworks), `t_buffer.mm` + `gui_layout.mm` (AppKit-bound). Engine-render UI stories 2.S1/2.S2/2.S4 already delivered |
 | 3 | encoding/transcode + `io`/`file` subsets | ✅ `t_transcode` (8) + `io/t_path` (10) green; `file/*` open/save suites dispositioned (covered by NSDocument) → Phase 3 UI complete |
 | 4 | 58/58 (regexp + scope + parse) + 5/5 (bundles) | pending |
