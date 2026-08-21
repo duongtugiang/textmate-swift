@@ -232,6 +232,14 @@ appended at the bottom, newest last. Source of truth for statuses: the
 <div class="how"><span class="label">How:</span> four real bugs surfaced by the port: (1) old-style plists treat single-quoted strings as literal — the parser was unescaping <code>\b</code> to <code>b</code>, silently breaking every grammar pattern; (2) <code>scopeSelector?.doesMatch ?? 1</code> turned a <i>non-match</i> (nil) into rank 1, making every scoped item match every scope; (3) <code>scope_variables</code> must expand each pair against the <i>accumulating</i> result (C++ <code>tmp &lt;&lt; res</code>) and walk the shadow stack most-specific-first (<code>riterate</code>); (4) the required-bundle query matches by the item&rsquo;s <code>bundle_uuid()</code>, which is a top-level bundle&rsquo;s <i>own</i> uuid. Also caught a SwiftPM quirk: <code>swift build --target</code> compiles but never links an executable product — use <code>swift run</code>.</div>
 </div>
 
+<div class="entry">
+<h3>2143cd3 — fix(app): align caret with the font&rsquo;s true advance (no ceil drift)</h3>
+<div class="meta">2026-08-21</div>
+<div class="why"><span class="label">Why:</span> user report — while typing, the caret sat one space-character ahead of the last typed character.</div>
+<div class="what"><span class="label">What:</span> <code>charWidth</code> was <code>ceil("M".width)</code> = 9.0pt, but the monospaced 13pt font&rsquo;s true advance is 8.036pt — every character drifted the caret grid ~0.96pt right of the glyphs, so after ~8 chars the caret was a full character ahead. Now <code>charWidth</code> is the exact advance, so the text and caret share one grid (mouse hit-testing, selection, and <code>contentWidth</code> use the same value).</div>
+<div class="how"><span class="label">How:</span> measured with <code>CTFontGetAdvancesForGlyphs</code> (8.036) vs <code>"M".size</code> (8.036) vs the old <code>ceil</code> (9.0) — the drift is <code>N × (9 − 8.036)</code>, which is exactly the reported symptom. Build green, 107 tests.</div>
+</div>
+
 <!-- ================= APPEND NEW ENTRIES ABOVE THIS LINE (newest last) ================= -->
 
 </body>
