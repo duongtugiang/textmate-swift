@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TextMateSwift — Progress Log</title>
+<style>
+  body { font: 14px/1.6 -apple-system, "Segoe UI", sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { border-bottom: 2px solid #333; padding-bottom: .4rem; }
+  h2 { margin-top: 2.2rem; color: #111; }
+  h3 { margin-bottom: .2rem; }
+  .meta { color: #666; font-size: .85rem; margin-bottom: .6rem; }
+  .why, .what, .how { margin: .35rem 0 .35rem 1rem; }
+  .label { font-weight: 600; }
+  .entry { border-left: 3px solid #ccc; padding-left: 1rem; margin: 1.4rem 0; }
+  code { background: #f3f3f3; padding: 1px 5px; border-radius: 3px; font-size: .9em; }
+  .note { background: #fff8e1; border: 1px solid #f0e0a0; padding: .5rem .8rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>TextMateSwift — Progress Log</h1>
+<p>Append-only log of every commit: <b>why</b> it exists, <b>what</b> it changed, and
+<b>how</b> it was implemented (key decisions, gotchas, verification). New entries are
+appended at the bottom, newest last. Source of truth for statuses: the
+<a href="ROADMAP.md">ROADMAP</a> and <a href="docs/test-matrix.md">test matrix</a>.</p>
+
+<div class="entry">
+<h3>f562896 — docs: add planning skeleton (README, ROADMAP, ADR 0001)</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> a modernization of TextMate to Swift needs a contract before code — what to port, in what order, and how to prove faithfulness.</div>
+<div class="what"><span class="label">What:</span> README, the phase-based ROADMAP (Phase 0–4), and ADR 0001 (architecture decision record for the modernization approach).</div>
+<div class="how"><span class="label">How:</span> planned the 37-issue backlog (stories + tasks with gates tied to original C++ test suites), defined the test-compatibility contract, and recorded the engine-first architecture decision.</div>
+</div>
+
+<div class="entry">
+<h3>4801245 — feat: add project practices foundation (backlog, CI/CD, workflow)</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> the user asked for best software practices (issues, user stories, CI/CD) from day one; GitHub should be the single source of truth for the backlog.</div>
+<div class="what"><span class="label">What:</span> <code>docs/issues/backlog.json</code>, issue/label creation scripts, CI workflow skeleton, contributing guide, and a guarded release workflow.</div>
+<div class="how"><span class="label">How:</span> generated the 37-issue backlog programmatically (<code>scripts/create-issues.sh</code>, <code>setup-gh.sh</code>) with kind/effort/phase labels and dependency links; CI/CD were wired as guarded placeholders that activate as real code lands.</div>
+</div>
+
+<div class="entry">
+<h3>7a76d0f — feat: first macOS build — TextCore engine + bare editor app</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> milestone "first macOS build with basic text-editing functions" — prove the toolchain end-to-end before deeper porting.</div>
+<div class="what"><span class="label">What:</span> SwiftPM <code>TextCore</code> library (piece-tree storage, indexed map, undo stack, UTF-8 validation), 16 tests ported verbatim from <code>t_storage.cc</code>/<code>t_indexed_map.cc</code> plus engine tests, and a bare AppKit editor (New/Open/Save, undo/redo, cut/copy/paste) via XcodeGen.</div>
+<div class="how"><span class="label">How:</span> SwiftPM for the engine (fast iterate, testable), XcodeGen for the .app (declarative project, universal binary). Ported C++ suites line-for-line to XCTest to anchor correctness. Git history rewritten so every commit is authored by the user alone (<code>Van &lt;hvt914@outlook.com&gt;</code>), no co-author trailers.</div>
+</div>
+
+<div class="entry">
+<h3>af70c5e — docs: mark Phase 0 complete, add build instructions</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> keep the ROADMAP honest and let anyone build the app.</div>
+<div class="what"><span class="label">What:</span> Phase 0 items marked done; README build &amp; run steps; test matrix records the 9/9 gate green.</div>
+<div class="how"><span class="label">How:</span> statuses updated only where the gate (ported suite) was actually green — no re-scoping.</div>
+</div>
+
+<div class="entry">
+<h3>57b5278 — fix(ci): emit Xcode 15-compatible project format</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> the first real CI run failed: XcodeGen 2.46 defaults to Xcode 16 project format (77), which the macos-14 runner's Xcode 15.4 can't read.</div>
+<div class="what"><span class="label">What:</span> <code>projectFormat: xcode15_3</code> pinned in <code>project.yml</code> (format 63, readable by both toolchains).</div>
+<div class="how"><span class="label">How:</span> reproduced locally, confirmed <code>options.projectFormat</code> (not <code>objectVersion</code>) is the XcodeGen 2.46 lever, verified the generated project builds under both Xcode 16.4 (local) and 15.4 (CI).</div>
+</div>
+
+<div class="entry">
+<h3>7dead87 — feat(core): port text framework suites + engine-backed document</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> Phase 1 gate: prove the UTF-8/decoding/encoding/ctype layer matches TextMate byte-for-byte, and make the engine the document's source of truth.</div>
+<div class="what"><span class="label">What:</span> <code>TextUTF8</code> (safe-end, scalar round-trips, malformed removal), <code>TextCodec</code> (HTML entity map — all 253 entries — and URL encoding), <code>TextCtype</code> (east-asian-width with the full generated range table), 10 new tests; the app loads/saves through a <code>TextCore.Buffer</code>.</div>
+<div class="how"><span class="label">How:</span> generated the entity and ctype tables programmatically from the C++ sources (no transcription errors), ported the bit-level scalar logic faithfully, and routed document I/O through the engine instead of the view.</div>
+</div>
+
+<div class="entry">
+<h3>7a09408 / ec718af — docs: Phase 1 progress; close Phase 0/1 issues, mark in-progress</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> GitHub Issues is the live backlog; ROADMAP must mirror reality (11 issues closed, 4 in flight).</div>
+<div class="what"><span class="label">What:</span> issue state sync with evidence comments; ROADMAP statuses reconciled.</div>
+<div class="how"><span class="label">How:</span> closed issues one-by-one with commit/code evidence; left honestly-in-progress items open with 🟡 status comments.</div>
+</div>
+
+<div class="entry">
+<h3>88ac050 — docs: revise roadmap — current state, next milestone, clean titles, gate fixes</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> the plan drifted from GitHub (status notes jammed into titles) and had a contradictory "done but ~18/~20" gate — the user asked for a revision.</div>
+<div class="what"><span class="label">What:</span> new "Current state &amp; next up" section, titles restored to match issue titles verbatim, per-task Notes column, gate honesty (a task is <code>[x]</code> only when its own gate slice is green).</div>
+<div class="how"><span class="label">How:</span> rewrote ROADMAP with GitHub as single source of truth; documented deferrals (e.g., text suites absorbed by 3.T2) explicitly.</div>
+</div>
+
+<div class="entry">
+<h3>3c3c8f9 — feat(core,app): engine-backed editor rendering, position mapping, command undo</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> the milestone that makes the piece tree the actual editing surface: custom render, caret, selection, scrolling, and engine undo — closing #9/#10/#15/#17 and the engine side of #11/#14.</div>
+<div class="what"><span class="label">What:</span> <code>Buffer</code> UTF-8↔UTF-16↔line/column mapping, command-based undo stack with typing coalescing (18 new tests → 50 total), and a custom <code>EditorView</code> (NSView) rendering straight from the tree: single-pass line drawing, caret, selection, scrolling, full keyboard/mouse editing, correct Edit-menu enabled state.</div>
+<div class="how"><span class="label">How:</span> debugged real boundary bugs (previous-boundary stepping, line-end newline snap) via tests; rewrote the draw path from 30×O(n) scans to one O(n) flatten per redraw; measured 8.4 MB load ~0s, redraw ~6ms; kept #11/#14 open with honest comments because their O(log n)/10-MB ACs belong to the tree milestone.</div>
+</div>
+
+<div class="entry">
+<h3>aa0f0e1 — docs: mark Phase 1–2 editing/undo/selection done, engine render in flight</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> sync ROADMAP/matrix/README with the engine-render milestone.</div>
+<div class="what"><span class="label">What:</span> statuses, matrix progress rows, README architecture description (custom view, not NSTextView).</div>
+<div class="how"><span class="label">How:</span> matched GitHub issue state; documented delivered-but-perf-pending items.</div>
+</div>
+
+<div class="entry">
+<h3>9520f44 — feat(app,core): NSDocument document layer, encoding detection, transcode + path ports</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> the UI-changing phase: multi-file tabs/windows, unsaved-close prompts, and encoding-aware open/save are what a real document app needs.</div>
+<div class="what"><span class="label">What:</span> <code>TextTranscode</code> (full charset transcoding — MacRoman/CP1252/Latin-1/UTF-8/16/32 with BOMs, escape semantics for unrepresentable chars), <code>TextPath</code> (byte-level port of <code>io/path.cc</code> normalize/extension/rank/join/relative), <code>TextDocument</code> (NSDocument backed by Buffer), tabs via automatic window tabbing, project.yml document types (8 + 10 tests → 68 total).</div>
+<div class="how"><span class="label">How:</span> generated MacRoman/CP1252 tables from Python codecs, transliterated the C++ byte algorithms (caught an index bug in normalize), rebuilt menus for the responder chain, and verified open/save round-trips including BOM files.</div>
+</div>
+
+<div class="entry">
+<h3>36949f5 — docs: mark Phase 3 document layer complete</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> Phase 3 (issues #23–#27) fully delivered and closed.</div>
+<div class="what"><span class="label">What:</span> ROADMAP Phase 3 [x], matrix gates green, README updated.</div>
+<div class="how"><span class="label">How:</span> verified 68 tests + multi-file smoke test before closing issues with evidence.</div>
+</div>
+
+<div class="entry">
+<h3>b3c99e0 — feat(core): treap-backed piece storage with O(log n) position aggregates</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> close the #11/#14/#16 perf ACs: array-backed storage made position lookups O(n), which cannot scale to 10 MB documents.</div>
+<div class="what"><span class="label">What:</span> <code>PieceStorage</code> rewritten as a treap with O(1) byte/newline/UTF-16 subtree aggregates, O(log n) locate/insert/erase; Buffer and EditorView moved to the tree API; randomized stress test added (71 tests total).</div>
+<div class="how"><span class="label">How:</span> this was the hardest debugging session: found the within-node split attaching the right subtree to the wrong side, self-metrics zeroed by allocNode, and subtree aggregates not refreshed after split — each located with a standalone property test against an array model, then fixed and re-verified (8185 failures → 0). Measured: position lookup 15ms → 0.076ms, line lookup 0.007ms, visible render 0.022ms on 8.4 MB.</div>
+</div>
+
+<div class="entry">
+<h3>c1913c2 — feat(app): Window menu with tab navigation and merge-all polish</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> complete the multi-document UX: ⌘` cycling and Merge All Windows are table stakes for tabbed editing.</div>
+<div class="what"><span class="label">What:</span> Minimize (⌘M), Zoom, Merge All Windows, Bring All to Front; <code>NSApp.windowsMenu</code> registered so the live window list appears automatically.</div>
+<div class="how"><span class="label">How:</span> verified the Window menu in the running app's menu bar and that the app quits cleanly after tabbed sessions.</div>
+</div>
+
+<div class="entry">
+<h3>8287c61 — ci(release): sign nested framework before app, verify with spctl, single dmg pass</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> the Phase-0 placeholder signed only the top-level bundle — the embedded TextCore.framework would be left unsigned and notarization would fail.</div>
+<div class="what"><span class="label">What:</span> hardened <code>release.yml</code> (nested-code-first signing, <code>codesign --verify --deep</code> + <code>spctl</code>, notarize + staple with validation, one .dmg pass with a Gatekeeper check, auto-changelog release) and <code>docs/release.md</code> runbook with the secrets table.</div>
+<div class="how"><span class="label">How:</span> exercised end-to-end on tag <b>v0.1.0</b> (unsigned leg — no Apple secrets configured; <code>BUILD_INFO.txt</code> states it). Signed/notarized leg is guarded on repo secrets per the issue AC.</div>
+</div>
+
+<div class="entry">
+<h3>516e7d7 — docs: mark 2.T4/2.S5 done, refresh current-state (25/37 closed)</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> the CD milestone landed (tag → release live), so the plan and GitHub had to move to 25/37 closed.</div>
+<div class="what"><span class="label">What:</span> ROADMAP current-state rewrite (tree storage + CD + Phase 3 delivered, next = 2.T2), closed #18/#22 with evidence.</div>
+<div class="how"><span class="label">How:</span> updated rows and narrative in one pass; verified issue counts match 37 total.</div>
+</div>
+
+<div class="entry">
+<h3>fc89871 — feat(core,app): port editor clipboard + transform suites, re-express layout basic_tree, fix document-type registration</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> 2.T2's portable slice: the layout/editor suites must be green (or honestly dispositioned) before the phase closes.</div>
+<div class="what"><span class="label">What:</span> <code>TextClipboard</code> (verbatim <code>simple_clipboard_t</code>, 2 tests), <code>TextTransform.transpose</code> (verbatim, 16 assertions, ICU-safe pattern), and <code>basic_tree</code> delta/range/numeric re-expressed against the treap (7 methods). First attempt at the document-type fix (<code>NSDocumentClass: TextDocument</code>). Suite 71 → 81 tests.</div>
+<div class="how"><span class="label">How:</span> key insight — the C++ tree stores only <i>lengths</i> and reads content from the original by final offset, so the byte re-expression inserts each chunk's own bytes at its shuffled position; range set/unset are replace-based (absolute marker positions), only adjust shifts. Fixed the delta test's wrong content slicing (verified with a standalone model) and a double-reversal bug in the reverse-iteration assertion. Dispositioned honestly: duplicate keys (offset-keyed storage), marks/macro/command/snippets (Phase-4 frameworks), .mm suites (AppKit).</div>
+</div>
+
+<div class="entry">
+<h3>af1122f — docs: mark 2.T2 done, record layout/editor dispositions (26/37 closed)</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> close #20 with the matrix as the evidence trail.</div>
+<div class="what"><span class="label">What:</span> ROADMAP 2.T2 [x] + matrix rows for layout/editor with the ported-vs-dispositioned split.</div>
+<div class="how"><span class="label">How:</span> gate reported as the portable subset green + explicit deferrals, matching how 1.T2/3.T2 were closed.</div>
+</div>
+
+<div class="entry">
+<h3>ccb22c6 — fix(app): module-qualified NSDocumentClass so documents can be created</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> user reported "cannot open files in the 'Text Document' format" — the built plist's <code>NSDocumentClass: TextDocument</code> was unresolvable because the runtime class is module-qualified.</div>
+<div class="what"><span class="label">What:</span> <code>NSDocumentClass: $(PRODUCT_MODULE_NAME).TextDocument</code> (the AppKit document-app template form).</div>
+<div class="how"><span class="label">How:</span> verified the built Info.plist expands to <code>TextMateSwift.TextDocument</code> and that open now succeeds (window titled <code>tm_a.txt</code>).</div>
+</div>
+
+<div class="entry">
+<h3>73365b1 — fix(app): register TextDocument programmatically so `swift run` works</h3>
+<div class="meta">2026-08-20</div>
+<div class="why"><span class="label">Why:</span> user reported "No document could be created" under <code>swift run</code> — the SwiftPM executable has no Info.plist, so NSDocumentController can't discover any document class (the plist fix only helped the .app).</div>
+<div class="what"><span class="label">What:</span> <code>DocumentController</code> (NSDocumentController subclass) that maps all text types to <code>TextDocument</code> and overrides <code>makeUntitledDocument</code>/<code>makeDocument(withContentsOf:)</code>; instantiated before <code>app.run()</code> so it becomes the shared controller. Works for both build paths.</div>
+<div class="how"><span class="label">How:</span> learned the Swift signatures the hard way (<code>documentClass(forType:)</code>, <code>types</code> not overridable); verified both <code>swift run</code> and the Release .app open an Untitled window and open files.</div>
+</div>
+
+<!-- ================= APPEND NEW ENTRIES ABOVE THIS LINE (newest last) ================= -->
+
+</body>
+</html>
