@@ -216,6 +216,14 @@ appended at the bottom, newest last. Source of truth for statuses: the
 <div class="how"><span class="label">How:</span> verified at the pixel level — captured the window with <code>screencapture -l</code> and histogram-checked the PNG for the theme colors (comment gray, keyword purple) plus body text.</div>
 </div>
 
+<div class="entry">
+<h3>b6adf91 — feat(perf): 2.T3 rendering baseline + ADR 0002 — Swift-native layout confirmed</h3>
+<div class="meta">2026-08-21</div>
+<div class="why"><span class="label">Why:</span> 2.T3 (issue #21) — the perf gate that settles ADR 0001&rsquo;s open question (C++ bridge vs. Swift-native layout). The C++ repo has no formal perf harness, so the gate needed a reproducible Swift baseline to compare against the original&rsquo;s documented behavior (visible-region layout in single-digit ms, per-line incremental re-layout).</div>
+<div class="what"><span class="label">What:</span> <code>Sources/Benchmarks</code> — a SwiftPM-only executable (not in the app) that measures the exact editor paths on an 11.5 MB / 120k-line corpus with a deterministic RNG: construct (open), lineLookup, positionLookup, the drawText visible-window path, lineRangeAll, and random edits. Results: <b>0.063 ms per 60-line visible window</b>, ~1.29M line lookups/s, 3.2 µs per insert+erase pair, ~76 MB/s open — two orders of magnitude under the C++ frame budget on the render path. Wrote <code>docs/decisions/0002-layout-strategy.md</code>: <b>Swift-native layout, no C++ bridge</b> (supersedes ADR 0001 #2). Also synced the Phase 4 docs: scope 13/13 + parse 4/4 suites green (regexp 41 dispositioned against the ICU emulation), 4.S1/4.S2 delivered, README/ROADMAP/test-matrix updated. 102 tests green; issues #21/#28/#29/#34/#35/#37 closed with evidence.</div>
+<div class="how"><span class="label">How:</span> debugged a segfault that looked like the engine — it was the benchmark&rsquo;s own <code>String(format: %s)</code> with Swift Strings (UB), and a SwiftPM quirk where <code>swift build --target</code> compiles but never links the executable product (only <code>swift run</code> / product builds do). Fixed the format calls, made stdout unbuffered for crash traces, and switched to <code>swift run -c release Benchmarks</code>.</div>
+</div>
+
 <!-- ================= APPEND NEW ENTRIES ABOVE THIS LINE (newest last) ================= -->
 
 </body>
