@@ -9,6 +9,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
     private var textView: NSTextView!
     private var currentURL: URL?
+    /// The `TextCore` buffer is the document source of truth: files are loaded
+    /// into it, edits are synced back from the view, and saves write from it.
+    /// (Fine-grained edit streaming into the piece tree is Phase 2 work — for
+    /// now the buffer is re-synced on each text change.)
+    private var document = Buffer()
     private var dirty = false {
         didSet { updateTitle() }
     }
@@ -120,6 +125,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Dirty state
 
     @objc private func textDidChange(_ notification: Notification) {
+        // Sync the engine buffer from the editing surface so it stays the
+        // source of truth for the document.
+        document = Buffer(Array(textView.string.utf8))
         dirty = true
     }
 
@@ -132,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func newDocument(_ sender: Any?) {
         currentURL = nil
+        document = Buffer()
         textView.string = ""
         dirty = false
         window.makeFirstResponder(textView)
@@ -156,7 +165,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 presentError("“\(url.lastPathComponent)” is not valid UTF-8 text.")
                 return
             }
-            textView.string = String(decoding: data, as: UTF8.self)
+            document = Buffer(bytes)
+            textView.string = document.content
             currentURL = url
             dirty = false
             window.makeFirstResponder(textView)
@@ -186,7 +196,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func write(to url: URL) {
         do {
-            try textView.string.write(to: url, atomically: true, encoding: .utf8)
+            // Write from the engine buffer rather than the view.
+            try Data(document.bytes).write(to: url, options: .atomic)
             dirty = false
         } catch {
             presentError("Could not save “\(url.lastPathComponent)”: \(error.localizedDescription)")
