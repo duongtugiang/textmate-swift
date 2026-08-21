@@ -240,6 +240,14 @@ appended at the bottom, newest last. Source of truth for statuses: the
 <div class="how"><span class="label">How:</span> measured with <code>CTFontGetAdvancesForGlyphs</code> (8.036) vs <code>"M".size</code> (8.036) vs the old <code>ceil</code> (9.0) — the drift is <code>N × (9 − 8.036)</code>, which is exactly the reported symptom. Build green, 107 tests.</div>
 </div>
 
+<div class="entry">
+<h3>46e6c9d — feat: complete Phase 4 — find &amp; replace, code folding, snippets (4.S4/4.S3/4.S5)</h3>
+<div class="meta">2026-08-21</div>
+<div class="why"><span class="label">Why:</span> close out the Phase 4 stories (#30/#31/#32) so the editor has the standard TextMate editing surface: search/replace, folding, and snippets.</div>
+<div class="what"><span class="label">What:</span> 4.S4 FindBar (live highlights, ⌘G/⇧⌘G, replace-all, case toggle); 4.S3 TextFolds (grammar markers + indented-block algorithm, gutter controls, ⌘⌥[/⌘⌥]); 4.S5 the full snippet.cc port — TextFormatString rewritten node-for-node and TextSnippets (fields/mirrors/choices, dependency graph, stack).</div>
+<div class="how"><span class="label">How:</span> the format-string engine was verified case-by-case against the real Onigmo engine (compiled standalone from source with TextMate's RUBY syntax config) — ICU anchors ^ to the search region, so replace() iterates the full range to reproduce Oniguruma's buffer-anchored ^; \p{^X} normalizes to \P{X}; asciify uses "Any-Latin; Latin-ASCII"; capitalize is the exact two-pass word/upcase regexes. The snippet engine traces the C++ stack/replace_helper semantics, including the running-adjustment application of pre-edit mirror ranges. Tests: t_format_string 7/7 + t_snippets ported — 126 total green; app builds, runs, folding verified in the live app.</div>
+</div>
+
 <!-- ================= APPEND NEW ENTRIES ABOVE THIS LINE (newest last) ================= -->
 
 </body>
