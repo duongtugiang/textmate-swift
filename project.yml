@@ -36,16 +36,29 @@ targets:
       - Sources/TextMateSwift
     dependencies:
       - target: TextCore
+    info:
+      path: TextMateSwift/Info.plist
+      properties:
+        CFBundleDisplayName: TextMateSwift
+        NSPrincipalClass: NSApplication
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSHumanReadableCopyright: ""
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Text Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.plain-text
+              - public.text
+              - public.utf8-plain-text
+              - public.utf16-plain-text
+              - com.apple.traditional-mac-plain-text
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.textmateswift.TextMateSwift
         PRODUCT_NAME: TextMateSwift
         MARKETING_VERSION: 0.1.0
         CURRENT_PROJECT_VERSION: 1
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: TextMateSwift
-        INFOPLIST_KEY_NSHumanReadableCopyright: ""
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         SWIFT_VERSION: "5.9"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         ENABLE_HARDENED_RUNTIME: NO

@@ -1,22 +1,17 @@
 import AppKit
 import TextCore
-import UniformTypeIdentifiers
 
-/// TextMateSwift — a bare editor whose document surface is the engine-backed
-/// `EditorView` (roadmap 2.S1): the `TextCore.Buffer` is the single source of
-/// truth, rendering and undo/redo both come from the piece tree, and files are
-/// loaded/saved through the engine's bytes. No NSTextView in the pipeline.
+/// TextMateSwift — a document-based AppKit editor (roadmap Phase 3). The app
+/// delegate only builds the menu bar and app lifecycle; documents, windows,
+/// tabs, encoding-aware open/save, and the unsaved-changes sheets come from
+/// `TextDocument` (NSDocument) + the engine-backed `EditorView`.
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var window: NSWindow!
-    private var editorView: EditorView!
-    private var currentURL: URL?
-    private var dirty = false {
-        didSet { updateTitle() }
-    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSWindow.allowsAutomaticWindowTabbing = true
         buildMenu()
-        buildWindow()
+        // Start with an untitled document, like a bare editor should.
+        NSDocumentController.shared.newDocument(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -24,35 +19,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
-    // MARK: - UI
-
-    private func buildWindow() {
-        let rect = NSRect(x: 0, y: 0, width: 960, height: 640)
-        window = NSWindow(
-            contentRect: rect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "Untitled"
-        window.center()
-        window.setFrameAutosaveName("TextMateSwift.MainWindow")
-
-        let scrollView = NSScrollView(frame: rect)
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.borderType = .noBorder
-
-        editorView = EditorView(frame: rect)
-        editorView.autoresizingMask = [.width]
-        editorView.onChange = { [weak self] in self?.dirty = true }
-        scrollView.documentView = editorView
-
-        window.contentView = scrollView
-        window.makeFirstResponder(editorView)
-        window.makeKeyAndOrderFront(nil)
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        true
     }
+
+    // MARK: - Menus
 
     private func buildMenu() {
         let mainMenu = NSMenu()
@@ -63,23 +34,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "About TextMateSwift", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
+        let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
+        servicesItem.submenu = NSMenu()
+        appMenu.addItem(servicesItem)
+        appMenu.addItem(.separator())
+        let hide = NSMenuItem(title: "Hide TextMateSwift", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        hide.target = NSApp
+        appMenu.addItem(hide)
+        let hideOthers = NSMenuItem(title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        hideOthers.keyEquivalentModifierMask = [.command, .option]
+        hideOthers.target = NSApp
+        appMenu.addItem(hideOthers)
+        appMenu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit TextMateSwift", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         appMenu.addItem(quit)
         appItem.submenu = appMenu
 
-        // File menu
+        // File menu — nil targets resolve through the responder chain to the
+        // document controller / document / window.
         let fileItem = NSMenuItem()
         mainMenu.addItem(fileItem)
         let fileMenu = NSMenu(title: "File")
-        fileMenu.addItem(menuItem("New", action: #selector(newDocument(_:)), key: "n"))
-        fileMenu.addItem(menuItem("Open…", action: #selector(openDocument(_:)), key: "o"))
+        fileMenu.addItem(NSMenuItem(title: "New", action: #selector(NSDocumentController.newDocument(_:)), keyEquivalent: "n"))
+        fileMenu.addItem(NSMenuItem(title: "Open…", action: #selector(NSDocumentController.openDocument(_:)), keyEquivalent: "o"))
         fileMenu.addItem(.separator())
-        fileMenu.addItem(menuItem("Save", action: #selector(saveDocument(_:)), key: "s"))
-        fileMenu.addItem(menuItem("Save As…", action: #selector(saveDocumentAs(_:)), key: "S"))
+        fileMenu.addItem(NSMenuItem(title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+        fileMenu.addItem(.separator())
+        fileMenu.addItem(NSMenuItem(title: "Save", action: #selector(NSDocument.save(_:)), keyEquivalent: "s"))
+        fileMenu.addItem(NSMenuItem(title: "Save As…", action: #selector(NSDocument.saveAs(_:)), keyEquivalent: "S"))
         fileItem.submenu = fileMenu
 
-        // Edit menu (nil target → first responder, i.e. the EditorView)
+        // Edit menu — nil targets → first responder (the EditorView)
         let editItem = NSMenuItem()
         mainMenu.addItem(editItem)
         let editMenu = NSMenu(title: "Edit")
@@ -93,96 +79,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
         editItem.submenu = editMenu
 
+        // Window menu
+        let windowItem = NSMenuItem()
+        mainMenu.addItem(windowItem)
+        let windowMenu = NSMenu(title: "Window")
+        let minimize = NSMenuItem(title: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(minimize)
+        let zoom = NSMenuItem(title: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        windowMenu.addItem(zoom)
+        windowMenu.addItem(.separator())
+        let bringAll = NSMenuItem(title: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
+        windowMenu.addItem(bringAll)
+        windowItem.submenu = windowMenu
+        NSApp.windowsMenu = windowMenu
+
         NSApp.mainMenu = mainMenu
-    }
-
-    private func menuItem(_ title: String, action: Selector, key: String) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
-        item.target = self
-        return item
-    }
-
-    // MARK: - Title / dirty state
-
-    private func updateTitle() {
-        let name = currentURL?.lastPathComponent ?? "Untitled"
-        window.title = dirty ? "\\(name) •" : name
-    }
-
-    // MARK: - File actions
-
-    @objc func newDocument(_ sender: Any?) {
-        currentURL = nil
-        editorView.load(Buffer())
-        dirty = false
-        window.makeFirstResponder(editorView)
-    }
-
-    @objc func openDocument(_ sender: Any?) {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Open"
-        panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url, let self else { return }
-            self.load(url: url)
-        }
-    }
-
-    private func load(url: URL) {
-        do {
-            let data = try Data(contentsOf: url)
-            let bytes = [UInt8](data)
-            guard TextEncoding.isValidUTF8(bytes) else {
-                presentError("“\\(url.lastPathComponent)” is not valid UTF-8 text.")
-                return
-            }
-            editorView.load(Buffer(bytes))
-            currentURL = url
-            dirty = false
-            window.makeFirstResponder(editorView)
-        } catch {
-            presentError("Could not open “\\(url.lastPathComponent)”: \\(error.localizedDescription)")
-        }
-    }
-
-    @objc func saveDocument(_ sender: Any?) {
-        if let url = currentURL {
-            write(to: url)
-        } else {
-            saveDocumentAs(sender)
-        }
-    }
-
-    @objc func saveDocumentAs(_ sender: Any?) {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.plainText]
-        panel.nameFieldStringValue = currentURL?.lastPathComponent ?? "Untitled.txt"
-        panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url, let self else { return }
-            self.currentURL = url
-            self.write(to: url)
-        }
-    }
-
-    private func write(to url: URL) {
-        do {
-            // Write from the engine buffer — the piece tree is the document.
-            try Data(editorView.buffer.bytes).write(to: url, options: .atomic)
-            dirty = false
-        } catch {
-            presentError("Could not save “\\(url.lastPathComponent)”: \\(error.localizedDescription)")
-        }
-    }
-
-    // MARK: - Errors
-
-    private func presentError(_ message: String) {
-        let alert = NSAlert()
-        alert.messageText = "TextMateSwift"
-        alert.informativeText = message
-        alert.alertStyle = .warning
-        alert.runModal()
     }
 }
 

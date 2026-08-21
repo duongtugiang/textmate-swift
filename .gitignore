@@ -24,3 +24,4 @@ Build/
 
 # XcodeGen output (project.yml is the source of truth)
 TextMateSwift.xcodeproj/
+TextMateSwift/Info.plist
