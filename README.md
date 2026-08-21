@@ -30,9 +30,13 @@ tmLanguage-format grammar (engine-level incremental reparse, per-scope theme
 colors), and a **line-number gutter**. `TextCore` ships with piece-tree storage
 (treap, O(log n) locate/insert/erase), command-based undo with typing
 coalescing, UTF-8 utilities, position mapping (byte ↔ UTF-16 ↔ line/column),
-charset transcoding, path utilities, and the grammar/scope/parse engine
-(Onigmo anchor semantics emulated over ICU) — **102 tests green** (50+ ported
-from the original C++ suites). The perf gate (2.T3) is passed: 0.063 ms per
+charset transcoding, path utilities, the grammar/scope/parse engine (Onigmo
+anchor semantics emulated over ICU), and the **bundles framework** (old-style
+plist parser, bundle-item index with scope-ranked querying, per-scope
+`shellVariables` with v1 shadowing, shell-command requirements) — **107 tests
+green** (60+ ported from the original C++ suites). Bundles ▸ **Load Grammar…**
+loads any `.tmLanguage` / `.tmBundle` from disk and drives highlighting with
+it. The perf gate (2.T3) is passed: 0.063 ms per
 60-line visible window on an 11.5 MB document (`swift run -c release
 Benchmarks`).
 
@@ -55,8 +59,8 @@ xcodebuild -project TextMateSwift.xcodeproj -scheme TextMateSwift -configuration
 open Build/Products/Release/TextMateSwift.app
 ```
 
-Remaining Phase 4 stories: bundles (`.tmBundle` loading), find & replace, code
-folding, and snippets/macros (issues #30–33, #36).
+Remaining Phase 4 stories: find & replace, code folding, and snippets/macros
+(issues #30–32).
 
 ## Project practices
 

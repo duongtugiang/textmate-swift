@@ -79,6 +79,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
         editItem.submenu = editMenu
 
+        // Bundles menu — load .tmLanguage grammars / .tmBundle directories
+        // (4.S6); the action resolves to the first responder (EditorView).
+        let bundlesItem = NSMenuItem()
+        mainMenu.addItem(bundlesItem)
+        let bundlesMenu = NSMenu(title: "Bundles")
+        bundlesMenu.addItem(NSMenuItem(title: "Load Grammar…", action: Selector(("loadGrammar:")), keyEquivalent: ""))
+        bundlesItem.submenu = bundlesMenu
+
         // Window menu — the window list (with ⌘` cycling) is added automatically
         // when the menu is registered as NSApp.windowsMenu.
         let windowItem = NSMenuItem()

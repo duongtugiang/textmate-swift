@@ -594,6 +594,24 @@ final class EditorView: NSView {
         insertText(text)
     }
 
+    /// Loads a `.tmLanguage` grammar (or a `.tmBundle` directory) from disk
+    /// and applies it to this document (4.S6).
+    @objc func loadGrammar(_ sender: Any?) {
+        let panel = NSOpenPanel()
+        panel.title = "Load Grammar"
+        panel.prompt = "Load"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = true
+        panel.allowedFileTypes = ["tmLanguage", "tmBundle", "plist"]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let grammar = GrammarLoader.grammar(fromAny: url) else {
+            NSSound.beep()
+            return
+        }
+        syntax.setGrammar(grammar)
+        needsDisplay = true
+    }
+
     // `selectAll:` is declared on NSResponder, so it must use `override`.
     override func selectAll(_ sender: Any?) {
         anchor = 0

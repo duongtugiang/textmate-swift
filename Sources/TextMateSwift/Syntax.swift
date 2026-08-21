@@ -1,6 +1,58 @@
 import AppKit
 import TextCore
 
+/// Loads `.tmLanguage` grammars and `.tmBundle` bundles from disk (4.S6).
+/// Accepts both the old-style ASCII plist format (`.tmBundle` tradition) and
+/// XML/binary plists — the same dict is fed to `Grammar(plist:)` that the
+/// built-in grammar uses.
+enum GrammarLoader {
+
+    /// Grammar for a `.tmLanguage` file.
+    static func grammar(from url: URL) -> Grammar? {
+        guard let dict = plist(from: url) else { return nil }
+        return Grammar(plist: dict)
+    }
+
+    /// First grammar found in a `.tmBundle` directory (`Syntaxes/*.tmLanguage`).
+    static func grammar(fromBundle url: URL) -> Grammar? {
+        let syntaxes = url.appendingPathComponent("Syntaxes")
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: syntaxes,
+            includingPropertiesForKeys: nil
+        )) ?? []
+        for file in files where file.pathExtension == "tmLanguage" {
+            if let grammar = grammar(from: file) {
+                return grammar
+            }
+        }
+        return nil
+    }
+
+    /// First grammar for a URL that may be a file or a bundle directory.
+    static func grammar(fromAny url: URL) -> Grammar? {
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
+            return grammar(fromBundle: url)
+        }
+        return grammar(from: url)
+    }
+
+    private static func plist(from url: URL) -> [String: Any]? {
+        // Old-style ASCII plist first (the classic .tmLanguage format)…
+        if let text = try? String(contentsOf: url, encoding: .utf8),
+           let dict = TextPlist.parse(text) {
+            return dict
+        }
+        // …then XML/binary plist.
+        if let data = try? Data(contentsOf: url),
+           let object = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
+           let dict = object as? [String: Any] {
+            return dict
+        }
+        return nil
+    }
+}
+
 /// Scope → color theme (4.S2). Mirrors the classic TextMate scope hierarchy:
 /// innermost scope element wins, matched by prefix. `SyntaxParser` and the
 /// built-in grammar live in TextCore (engine-side); this mapping is

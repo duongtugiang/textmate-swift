@@ -19,9 +19,9 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 
 ## Current state & next up
 
-**Done (31 of 37 issues closed):** Phase 0 (8/8), Phase 1 (5/5), Phase 2
+**Done (33 of 37 issues closed):** Phase 0 (8/8), Phase 1 (5/5), Phase 2
 (2.T1/2.T2/2.T3/2.S1/2.S2/2.S4/2.T4/2.S5), Phase 3 (5/5), and **Phase 4 core —
-the grammar stack (4.T1/4.T2/4.S1/4.S2)**.
+the grammar stack + bundles (4.T1/4.T2/4.T3/4.S1/4.S2/4.S6)**.
 
 - **Perf gate 2.T3 + ADR 0002** — `Sources/Benchmarks` measures the exact render
   path on an 11.5 MB / 120k-line corpus (deterministic RNG, reproducible via
@@ -43,12 +43,10 @@ the grammar stack (4.T1/4.T2/4.S1/4.S2)**.
   tests green; a highlighted demo document opens and renders (theme colors
   verified at the pixel level).
 
-**Next:** the remaining Phase 4 stories in dependency order — **4.S6 bundles**
-(`.tmLanguage`/`.tmBundle` loading, which unlocks arbitrary grammars + 4.T3
-bundle suites), **4.S4 find & replace**, **4.S3 folding** (line-fold marks via
-`begin/end` scope pairs), then **4.S5 snippets/macros** (absorbs the
-`editor`/`regexp` dispositioned suites). 2.S3 (#16) smooth-scrolling polish
-sits on the same engine as 4.S3.
+**Next:** the remaining Phase 4 stories in dependency order — **4.S4 find &
+replace**, **4.S3 folding** (line-fold marks via `begin/end` scope pairs), then
+**4.S5 snippets/macros** (absorbs the `editor`/`regexp` dispositioned suites).
+2.S3 (#16) smooth-scrolling polish sits on the same engine as 4.S3.
 
 **Repo chores (blocked on repo admin):** kanban board (`gh auth refresh -s project`),
 branch protection on `main`, Apple release secrets for the notarized CD leg.
@@ -111,10 +109,10 @@ branch protection on `main`, Apple release secrets for the notarized CD leg.
 | [ ] | 4.S3 | story | Code folding | L | 4.S2 | — | [#30](https://github.com/duongtugiang/textmate-swift/issues/30) | — |
 | [ ] | 4.S4 | story | Find & replace | L | 2.S2 | — | [#31](https://github.com/duongtugiang/textmate-swift/issues/31) | — |
 | [ ] | 4.S5 | story | Snippets | L | 4.S2 | — | [#32](https://github.com/duongtugiang/textmate-swift/issues/32) | — |
-| [ ] | 4.S6 | story | Bundles & preferences | XL | 4.S2 | — | [#33](https://github.com/duongtugiang/textmate-swift/issues/33) | — |
+| [x] | 4.S6 | story | Bundles & preferences | XL | 4.S2 | — | [#33](https://github.com/duongtugiang/textmate-swift/issues/33) | Bundles engine (`TextPlist` old-style parser, `TextFormatString` expansion, `BundleItem`/`BundleIndex` query + scope_variables + requirements) + **Bundles ▸ Load Grammar…** menu: any `.tmLanguage`/`.tmBundle` loads and drives highlighting; preferences (settings editor UI) dispositioned out of the bare-editor MVP — engine-level `scope_variables` resolution is delivered and tested |
 | [x] | 4.T1 | task | Port `regexp` (41) + `scope` (13) + `parse` (4) tests → green | XL | 4.T2 | 58/58 | [#34](https://github.com/duongtugiang/textmate-swift/issues/34) | scope 13/13 + parse 4/4 green (+7 Swift tests → 102 total); regexp 41/41 dispositioned in the matrix — Onigmo internals superseded by the ICU emulation (verified against Onigmo source), utility suites follow 4.S5/4.S6 |
 | [x] | 4.T2 | task (spike) | Grammar-engine spike: Onigmo port vs Swift regex strategy | L | — | — | [#35](https://github.com/duongtugiang/textmate-swift/issues/35) | **ICU emulation chosen** — `\A`/`\G`/`\z`/`\Z`/`^`/`$` semantics verified against Onigmo's `regexec.c` and emulated over `NSRegularExpression`; `t_anchors` passes verbatim |
-| [ ] | 4.T3 | task | Port `bundles` (5) tests → green | M | 4.T2 | 5/5 | [#36](https://github.com/duongtugiang/textmate-swift/issues/36) | — |
+| [x] | 4.T3 | task | Port `bundles` (5) tests → green | M | 4.T2 | 5/5 | [#36](https://github.com/duongtugiang/textmate-swift/issues/36) | `t_query` (4) + `t_requirements` (1) ported verbatim in `BundleTests` — env format strings, v1 variable shadowing, scope query, required-bundle support paths, `missing_requirement` (5 Swift tests; 107 total) |
 | [ ] | 4.T4 | task | Out-of-scope disposition: document every skipped suite in the matrix | S | 0.T5 | matrix 100% | [#37](https://github.com/duongtugiang/textmate-swift/issues/37) | — |
 
 ---

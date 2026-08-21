@@ -21,7 +21,7 @@ extension GrammarStack: Equatable {
 /// repair model).
 public final class SyntaxParser {
 
-    public let grammar: Grammar
+    public private(set) var grammar: Grammar
 
     public private(set) var text = ""
     public private(set) var lines: [String] = []
@@ -30,6 +30,15 @@ public final class SyntaxParser {
 
     public init(grammar: Grammar) {
         self.grammar = grammar
+    }
+
+    /// Swap the grammar (4.S6: load a bundle grammar) and re-parse the
+    /// current text from scratch.
+    public func setGrammar(_ newGrammar: Grammar) {
+        grammar = newGrammar
+        if !text.isEmpty {
+            reload(text)
+        }
     }
 
     /// Full (re)parse — after opening a document or replacing its content.
