@@ -19,11 +19,11 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 
 ## Current state & next up
 
-**Done (15 of 37 issues closed):** Phase 0 complete (8/8); Phase 1 text suites (1.T2,
-1.T3), editing + engine undo (1.S1, 1.S2); Phase 2 app target (2.T1), engine-backed
-rendering with selection and UI undo (2.S2, 2.S4). The app now edits, undoes, opens,
-and saves through a custom `NSView` that renders directly from the TextCore piece tree
-— no NSTextView in the pipeline.
+**Done (20 of 37 issues closed):** Phase 0 (8/8), Phase 1 (1.S1/1.S2/1.T2/1.T3),
+Phase 2 (2.T1/2.S2/2.S4), and **Phase 3 — document layer (5/5)**: the app is now
+NSDocument-based — multi-file tabs/windows, encoding-aware open/save (UTF-8/16/32
+with BOMs, Windows-1252, MacRoman, Latin-1), unsaved-changes sheets, dirty tracking,
+plus the `t_transcode` (8) and `io/t_path` (10) suites ported green (68 tests total).
 
 **In flight (2):**
 - **1.T1 (#11)** — UTF-8 line mapping + UTF-16/byte/column conversion done and tested;
@@ -33,7 +33,8 @@ and saves through a custom `NSView` that renders directly from the TextCore piec
 
 **Next:** the large-document milestone — tree-backed storage + line index (closes 1.T1,
 2.S1, and enables **2.S3** smooth scrolling), then **2.T2** (port `layout` + `editor` test
-suites), **2.T3** perf baseline (feeds ADR 0002), and the **Phase 3** document layer.
+suites), **2.T3** perf baseline (feeds ADR 0002), **2.T4/2.S5** CD (signed .dmg), and the
+**Phase 4** signature features.
 
 **Repo chores (blocked on repo admin):** kanban board (`gh auth refresh -s project`),
 branch protection on `main`, Apple release secrets for 2.T4.
@@ -81,11 +82,11 @@ branch protection on `main`, Apple release secrets for 2.T4.
 
 | Status | ID | Kind | Title | Effort | Depends on | Gate | Issue | Notes |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | 3.S1 | story | Open a file (⌘O, picker, common encodings) | M | 1.S1 | encoding/transcode tests | [#23](https://github.com/duongtugiang/textmate-swift/issues/23) | — |
-| [ ] | 3.S2 | story | Save my changes (⌘S, dirty-state, unsaved-close prompt) | M | 3.S1 | — | [#24](https://github.com/duongtugiang/textmate-swift/issues/24) | — |
-| [ ] | 3.S3 | story | Work with multiple files via tabs/windows | M | 3.S1 | — | [#25](https://github.com/duongtugiang/textmate-swift/issues/25) | — |
-| [ ] | 3.T1 | task | Document controller: open/save lifecycle, dirty tracking | M | 3.S1 | — | [#26](https://github.com/duongtugiang/textmate-swift/issues/26) | — |
-| [ ] | 3.T2 | task | Port encoding/transcode tests + relevant `io`/`file` suites → green | M | 3.T1 | — | [#27](https://github.com/duongtugiang/textmate-swift/issues/27) | Also absorbs the deferred text suites from 1.T2 |
+| [x] | 3.S1 | story | Open a file (⌘O, picker, common encodings) | M | 1.S1 | encoding/transcode tests | [#23](https://github.com/duongtugiang/textmate-swift/issues/23) | `TextTranscode.detect` + decode; NSDocument error sheets |
+| [x] | 3.S2 | story | Save my changes (⌘S, dirty-state, unsaved-close prompt) | M | 3.S1 | — | [#24](https://github.com/duongtugiang/textmate-swift/issues/24) | NSDocument: dirty dot, close/quit sheets, atomic writes |
+| [x] | 3.S3 | story | Work with multiple files via tabs/windows | M | 3.S1 | — | [#25](https://github.com/duongtugiang/textmate-swift/issues/25) | Automatic window tabbing; per-document undo stacks |
+| [x] | 3.T1 | task | Document controller: open/save lifecycle, dirty tracking | M | 3.S1 | — | [#26](https://github.com/duongtugiang/textmate-swift/issues/26) | `TextDocument` (NSDocument); encoding round-trip tested |
+| [x] | 3.T2 | task | Port encoding/transcode tests + relevant `io`/`file` suites → green | M | 3.T1 | — | [#27](https://github.com/duongtugiang/textmate-swift/issues/27) | `t_transcode` (8) + `io/t_path` (10) green; `file/*` suites dispositioned in the matrix (NSDocument covers open/save) |
 
 ## Phase 4+ — Signature features
 

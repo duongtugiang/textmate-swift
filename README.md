@@ -18,14 +18,15 @@ Swift-first — is decided at the Phase 2 perf gate).
 
 ## Status
 
-**Phase 0 complete, Phase 1–2 engine-backed editing live** — the app is a bare editor
-whose document surface is a custom `NSView` that renders directly from the `TextCore`
-piece tree (no `NSTextView` in the pipeline): New / Open / Save / Save As, engine-backed
-undo/redo (⌘Z / ⇧⌘Z), cut/copy/paste, mouse + keyboard selection, word select, caret
-navigation, and a dirty-state indicator. `TextCore` ships with piece-tree storage,
-command-based undo with typing coalescing, UTF-8 utilities, position mapping
-(byte ↔ UTF-16 ↔ line/column), and 50 tests green (16 ported + 18 engine + 16 from the
-`text` suites).
+**Phases 0–3 live** — a document-based AppKit editor whose document surface is a
+custom `NSView` that renders directly from the `TextCore` piece tree (no `NSTextView`
+in the pipeline): multiple files in tabs/windows (NSDocument), encoding-aware open/save
+(UTF-8/16/32 with BOMs, Windows-1252, MacRoman, Latin-1), unsaved-changes sheets on
+close/quit, engine-backed undo/redo (⌘Z / ⇧⌘Z), cut/copy/paste, mouse + keyboard
+selection, word select, caret navigation, and a dirty-state indicator. `TextCore` ships
+with piece-tree storage, command-based undo with typing coalescing, UTF-8 utilities,
+position mapping (byte ↔ UTF-16 ↔ line/column), charset transcoding, and path
+utilities — **68 tests green** (38 ported from the original C++ suites).
 
 The full backlog (18 stories + 19 tasks across 5 phases) lives in
 [GitHub Issues](https://github.com/duongtugiang/textmate-swift/issues); the phase
