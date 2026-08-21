@@ -22,35 +22,21 @@ jobs:
         if: hashFiles('project.yml') != ''
         run: xcodegen generate
 
-      - name: Build Release app
+      - name: Build Release app (unsigned)
         run: |
-          if [ -f project.yml ]; then
-            xcodebuild -project TextMateSwift.xcodeproj \
-              -scheme TextMateSwift \
-              -configuration Release \
-              -derivedDataPath build \
-              build
-            APP_PATH="build/Build/Products/Release/TextMateSwift.app"
-          else
-            echo "No app target yet — release job will publish an empty placeholder."
-            mkdir -p dist
-            echo "Release pipeline ready; app target lands with Phase 2 (2.T1)." > dist/README.txt
-            exit 0
-          fi
-
-      - name: Package .dmg
-        if: hashFiles('project.yml') != ''
-        run: |
+          xcodebuild -project TextMateSwift.xcodeproj \
+            -scheme TextMateSwift \
+            -configuration Release \
+            -derivedDataPath build \
+            build
           mkdir -p dist
           ditto "build/Build/Products/Release/TextMateSwift.app" "dist/TextMateSwift.app"
-          hdiutil create \
-            -volname TextMateSwift \
-            -srcfolder dist/TextMateSwift.app \
-            -ov -format UDZO \
-            "dist/TextMateSwift-${{ github.ref_name }}.dmg"
+          file dist/TextMateSwift.app/Contents/MacOS/TextMateSwift
 
       - name: Codesign (Developer ID)
-        if: hashFiles('project.yml') != '' && env.MACOS_CERTIFICATE != ''
+        # Signs nested code first (embedded TextCore.framework), then the app.
+        # Skipped when the repo has no release secrets — the dmg ships unsigned.
+        if: env.MACOS_CERTIFICATE != ''
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -63,13 +49,22 @@ jobs:
           security unlock-keychain -p temp build.keychain
           security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" -A -t cert -f pkcs12 -k build.keychain
           security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
+          # Nested framework first (in-order = deepest code signs before its owner).
+          codesign --force --options runtime \
+            --sign "$MACOS_CERTIFICATE_NAME" \
+            --keychain build.keychain \
+            "dist/TextMateSwift.app/Contents/Frameworks/TextCore.framework"
           codesign --force --options runtime \
             --sign "$MACOS_CERTIFICATE_NAME" \
             --keychain build.keychain \
             "dist/TextMateSwift.app"
+          # Sanity: the whole bundle must verify.
+          codesign --verify --deep --strict --verbose=2 "dist/TextMateSwift.app"
+          spctl -a -t exec -vv "dist/TextMateSwift.app"
+          echo "SIGNED=1" >> "$GITHUB_ENV"
 
       - name: Notarize & staple
-        if: hashFiles('project.yml') != '' && env.APPLE_ID != '' && env.APPLE_TEAM_ID != ''
+        if: env.APPLE_ID != '' && env.APPLE_TEAM_ID != '' && env.SIGNED == '1'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -82,19 +77,36 @@ jobs:
             --password "$APPLE_APP_PASSWORD" \
             --wait
           xcrun stapler staple "dist/TextMateSwift.app"
+          xcrun stapler validate -v "dist/TextMateSwift.app"
+          echo "NOTARIZED=1" >> "$GITHUB_ENV"
 
-      - name: Re-package .dmg after signing
-        if: hashFiles('project.yml') != '' && env.MACOS_CERTIFICATE != ''
+      - name: Package .dmg
         run: |
-          rm -f "dist/TextMateSwift-${{ github.ref_name }}.dmg"
+          if [ "${SIGNED:-0}" = "1" ]; then
+            echo "Signed build" > dist/BUILD_INFO.txt
+          else
+            echo "Unsigned build (no Apple release secrets configured)" > dist/BUILD_INFO.txt
+          fi
+          if [ "${NOTARIZED:-0}" = "1" ]; then
+            echo "Notarized by Apple" >> dist/BUILD_INFO.txt
+          fi
           hdiutil create \
             -volname TextMateSwift \
             -srcfolder dist/TextMateSwift.app \
             -ov -format UDZO \
             "dist/TextMateSwift-${{ github.ref_name }}.dmg"
+          # Gatekeeper check on the final artifact (only meaningful when notarized).
+          if [ "${NOTARIZED:-0}" = "1" ]; then
+            hdiutil attach "dist/TextMateSwift-${{ github.ref_name }}.dmg" -nobrowse -readonly
+            spctl -a -t open --context context:primary-signature -vv "/Volumes/TextMateSwift/TextMateSwift.app"
+            hdiutil detach "/Volumes/TextMateSwift"
+          fi
+          ls -la dist/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: |
+            dist/TextMateSwift-${{ github.ref_name }}.dmg
+            dist/BUILD_INFO.txt
           generate_release_notes: true
