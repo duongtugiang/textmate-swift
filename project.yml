@@ -46,7 +46,7 @@ targets:
         CFBundleDocumentTypes:
           - CFBundleTypeName: Text Document
             CFBundleTypeRole: Editor
-            NSDocumentClass: TextDocument
+            NSDocumentClass: $(PRODUCT_MODULE_NAME).TextDocument
             LSHandlerRank: Alternate
             LSItemContentTypes:
               - public.plain-text
