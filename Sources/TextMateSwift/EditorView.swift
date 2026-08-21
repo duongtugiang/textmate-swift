@@ -38,7 +38,10 @@ final class EditorView: NSView {
     private let gutterWidth: CGFloat = 52
 
     private lazy var lineHeight: CGFloat = NSLayoutManager().defaultLineHeight(for: font)
-    private lazy var charWidth: CGFloat = ceil("M".size(withAttributes: [.font: font]).width)
+    /// Exact per-character advance (not ceil'd): the caret and text must
+    /// share the same grid, and ceil introduces ~1pt/char of drift that
+    /// visibly detaches the caret from the last typed character.
+    private lazy var charWidth: CGFloat = "M".size(withAttributes: [.font: font]).width
     private lazy var textAttributes: [NSAttributedString.Key: Any] = [
         .font: font,
         .foregroundColor: NSColor.textColor,
