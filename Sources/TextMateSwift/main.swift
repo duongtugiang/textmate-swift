@@ -79,7 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
         editItem.submenu = editMenu
 
-        // Window menu
+        // Window menu — the window list (with ⌘` cycling) is added automatically
+        // when the menu is registered as NSApp.windowsMenu.
         let windowItem = NSMenuItem()
         mainMenu.addItem(windowItem)
         let windowMenu = NSMenu(title: "Window")
@@ -87,6 +88,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowMenu.addItem(minimize)
         let zoom = NSMenuItem(title: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         windowMenu.addItem(zoom)
+        let mergeAll = NSMenuItem(title: "Merge All Windows", action: #selector(NSWindow.mergeAllWindows(_:)), keyEquivalent: "")
+        windowMenu.addItem(mergeAll)
         windowMenu.addItem(.separator())
         let bringAll = NSMenuItem(title: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         windowMenu.addItem(bringAll)
