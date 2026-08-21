@@ -28,7 +28,7 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` green · `—` not appli
 | `parse` | 4 | 4 | Port now | 4.T1 | [ ] | Grammar parsing |
 | `bundles` | 2 | 5 | Port now | 4.T3 | [ ] | Depends on grammar-engine spike 4.T2 |
 | `layout` | 4 (`t_basic_tree_delta.cc`, `t_basic_tree_numeric.cc`, `t_basic_tree_range.cc`, `gui_layout.mm`) | 10 | Port now (.cc) + AppKit-bound (.mm) | 2.T2 | [ ] | `basic_tree` suites ported against Swift equivalent |
-| `editor` | — | 9 | Port now | 2.T2 | [ ] | Selection/undo semantics |
+| `editor` | — | 9 | Port now | 2.T2 | [ ] | Selection/undo semantics — undo engine behavior now covered by Swift `UndoTests` (9) and selection behavior verified in-app (2.S2); the `.cc` suite itself still to port |
 
 ## Remaining frameworks — full inventory (task 0.T5)
 
@@ -63,7 +63,7 @@ Classification guidance for the full pass:
 | Phase | Gate slice | Result |
 |---|---|---|
 | 0 | 9/9 (storage + indexed_map) | ✅ green — 16 ported tests + 6 engine tests |
-| 1 | utf8/decode/encode/ctype 9/9 (+ buffer .cc done in Phase 0) | ✅ utf8/decode/encode/ctype green (9 cases, 10 Swift tests) |
-| 2 | 19+/19+ (layout + editor + `t_buffer.mm`) | pending |
+| 1 | utf8/decode/encode/ctype 9/9 (+ buffer .cc done in Phase 0) | ✅ utf8/decode/encode/ctype green (9 cases, 10 Swift tests); +18 engine tests (9 position mapping, 9 undo) → 50 total |
+| 2 | 19+/19+ (layout + editor + `t_buffer.mm`) | pending — UI stories 2.S1/2.S2/2.S4 delivered (engine render, selection, engine undo in app); the layout/editor `.cc` port itself is 2.T2 |
 | 3 | encoding/transcode + `io`/`file` subsets | pending |
 | 4 | 58/58 (regexp + scope + parse) + 5/5 (bundles) | pending |

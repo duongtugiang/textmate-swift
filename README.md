@@ -18,11 +18,14 @@ Swift-first — is decided at the Phase 2 perf gate).
 
 ## Status
 
-**Phase 0 complete** — first macOS build works: a bare editor window with New /
-Open / Save / Save As, full text editing (undo, redo, cut, copy, paste, select all),
-and a dirty-state indicator. The Swift text engine (`TextCore`) ships with piece-tree
-storage, undo stack, UTF-8 utilities, and the first ported TextMate test suites green
-(16 ported + 6 engine tests).
+**Phase 0 complete, Phase 1–2 engine-backed editing live** — the app is a bare editor
+whose document surface is a custom `NSView` that renders directly from the `TextCore`
+piece tree (no `NSTextView` in the pipeline): New / Open / Save / Save As, engine-backed
+undo/redo (⌘Z / ⇧⌘Z), cut/copy/paste, mouse + keyboard selection, word select, caret
+navigation, and a dirty-state indicator. `TextCore` ships with piece-tree storage,
+command-based undo with typing coalescing, UTF-8 utilities, position mapping
+(byte ↔ UTF-16 ↔ line/column), and 50 tests green (16 ported + 18 engine + 16 from the
+`text` suites).
 
 The full backlog (18 stories + 19 tasks across 5 phases) lives in
 [GitHub Issues](https://github.com/duongtugiang/textmate-swift/issues); the phase
@@ -43,8 +46,8 @@ xcodebuild -project TextMateSwift.xcodeproj -scheme TextMateSwift -configuration
 open Build/Products/Release/TextMateSwift.app
 ```
 
-Note: the demo app currently uses `NSTextView`'s built-in storage; wiring the
-`TextCore` engine into the UI is Phase 1–2 work (issue #11, #14).
+Large-document smoothness (≥10 MB) and O(log n) position lookup are the next milestone
+(tree-backed storage — issues #11, #14, #16).
 
 ## Project practices
 

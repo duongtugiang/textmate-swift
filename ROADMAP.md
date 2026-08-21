@@ -19,19 +19,21 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 
 ## Current state & next up
 
-**Done (11 of 37 issues closed):** Phase 0 complete (8/8 — SwiftPM skeleton, piece-tree
-storage, undo engine, storage/indexed_map + text utf8/decode/encode/ctype suites green,
-CI pipeline); Phase 1 text suites (1.T2, 1.T3); Phase 2 app target (2.T1).
+**Done (15 of 37 issues closed):** Phase 0 complete (8/8); Phase 1 text suites (1.T2,
+1.T3), editing + engine undo (1.S1, 1.S2); Phase 2 app target (2.T1), engine-backed
+rendering with selection and UI undo (2.S2, 2.S4). The app now edits, undoes, opens,
+and saves through a custom `NSView` that renders directly from the TextCore piece tree
+— no NSTextView in the pipeline.
 
-**In flight (4):** 1.S1, 1.S2, 1.T1, 2.S1 — the app edits, undoes, opens, and saves via
-NSTextView with a TextCore `Buffer` as the source of truth, but the view does not yet
-render from the piece tree.
+**In flight (2):**
+- **1.T1 (#11)** — UTF-8 line mapping + UTF-16/byte/column conversion done and tested;
+  the O(log n) lookup AC awaits the tree-backed storage upgrade (2.T3 / #16).
+- **2.S1 (#14)** — engine render delivered (single-pass drawing, ~6 ms full redraw on
+  8.4 MB); the 10 MB “renders without freezing” AC is tracked by 2.S3 / #16.
 
-**Next milestone — engine-backed rendering:**
-- **2.S1 (#14)** — custom `NSView` rendering from the TextCore buffer: caret, selection, scrolling.
-- **1.T1 (#11)** — line/column ↔ UTF-16 offset mapping in `Buffer` so AppKit text ranges round-trip.
-- **1.S2 (#10) → 2.S4 (#17)** — engine `UndoStack` as the app's edit history (⌘Z / ⇧⌘Z).
-- Then **2.S2 (#15)** mouse/keyboard selection and **2.S3 (#16)** smooth scrolling in large documents.
+**Next:** the large-document milestone — tree-backed storage + line index (closes 1.T1,
+2.S1, and enables **2.S3** smooth scrolling), then **2.T2** (port `layout` + `editor` test
+suites), **2.T3** perf baseline (feeds ADR 0002), and the **Phase 3** document layer.
 
 **Repo chores (blocked on repo admin):** kanban board (`gh auth refresh -s project`),
 branch protection on `main`, Apple release secrets for 2.T4.
@@ -55,9 +57,9 @@ branch protection on `main`, Apple release secrets for 2.T4.
 
 | Status | ID | Kind | Title | Effort | Depends on | Gate | Issue | Notes |
 |---|---|---|---|---|---|---|---|---|
-| [~] | 1.S1 | story | Type and delete text; cursor follows edits | M | 1.T1 | buffer/text .cc green | [#9](https://github.com/duongtugiang/textmate-swift/issues/9) | Editing works in-app via NSTextView; engine-backed surface is 2.S1 |
-| [~] | 1.S2 | story | Undo/redo my edits (⌘Z / ⇧⌘Z) | M | 0.T4 | — | [#10](https://github.com/duongtugiang/textmate-swift/issues/10) | App undo via NSTextView manager; engine `UndoStack` wiring pending (2.S4) |
-| [~] | 1.T1 | task | Position mapping: line/column ↔ UTF-16 offset | M | 0.T2 | — | [#11](https://github.com/duongtugiang/textmate-swift/issues/11) | UTF-8 line mapping done; UTF-16/column pending |
+| [x] | 1.S1 | story | Type and delete text; cursor follows edits | M | 1.T1 | buffer/text .cc green | [#9](https://github.com/duongtugiang/textmate-swift/issues/9) | Edits flow through the engine (EditorView → Buffer); caret boundary-aware |
+| [x] | 1.S2 | story | Undo/redo my edits (⌘Z / ⇧⌘Z) | M | 0.T4 | — | [#10](https://github.com/duongtugiang/textmate-swift/issues/10) | Engine `UndoStack` in Buffer; typing coalescing; responder-chain ⌘Z/⇧⌘Z |
+| [~] | 1.T1 | task | Position mapping: line/column ↔ UTF-16 offset | M | 0.T2 | — | [#11](https://github.com/duongtugiang/textmate-swift/issues/11) | UTF-8 line + UTF-16/byte/column mapping done & tested; O(log n) indexing pending tree-backed storage (2.T3) |
 | [x] | 1.T2 | task | Port remaining pure-C++ buffer tests + `text` utf8/decode/encode/ctype → green | M | 0.T3, 1.T1 | 9/9 buffer .cc + 9/9 text subset | [#12](https://github.com/duongtugiang/textmate-swift/issues/12) | Remaining text suites (format/indent/split/tokenize/transcode/trim/wrap/case/ranker) deferred to Phase 3–4, tracked in the matrix |
 | [x] | 1.T3 | task | UTF-8 validation & normalize utilities (spec: `text/utf8`, `text/transcode`) | M | 1.T2 | — | [#13](https://github.com/duongtugiang/textmate-swift/issues/13) | Shipped with 1.T2 |
 
@@ -65,10 +67,10 @@ branch protection on `main`, Apple release secrets for 2.T4.
 
 | Status | ID | Kind | Title | Effort | Depends on | Gate | Issue | Notes |
 |---|---|---|---|---|---|---|---|---|
-| [~] | 2.S1 | story | See a file's text rendered in a window | L | 1.T1 | layout tests green | [#14](https://github.com/duongtugiang/textmate-swift/issues/14) | App shows files via NSTextView; **DoD = custom NSView rendering from the TextCore piece tree** (caret, scrolling) |
-| [ ] | 2.S2 | story | Select text with mouse and keyboard | L | 2.S1 | editor selection tests | [#15](https://github.com/duongtugiang/textmate-swift/issues/15) | After engine render |
+| [~] | 2.S1 | story | See a file's text rendered in a window | L | 1.T1 | layout tests green (via 2.T2) | [#14](https://github.com/duongtugiang/textmate-swift/issues/14) | **Done: custom NSView renders from the piece tree** (single-pass draw, caret, scrolling). 10 MB smoothness AC → 2.S3 / #16 |
+| [x] | 2.S2 | story | Select text with mouse and keyboard | L | 2.S1 | editor selection tests | [#15](https://github.com/duongtugiang/textmate-swift/issues/15) | Click/drag/shift+arrows/⌘A/double-click word — all ACs met |
 | [ ] | 2.S3 | story | Scroll smoothly through large documents (≥10 MB) | M | 2.S1 | — | [#16](https://github.com/duongtugiang/textmate-swift/issues/16) | Perf baseline vs C++ (2.T3) |
-| [ ] | 2.S4 | story | Undo/redo wired into the UI | S | 1.S2, 2.S2 | — | [#17](https://github.com/duongtugiang/textmate-swift/issues/17) | Engine-backed undo in the UI |
+| [x] | 2.S4 | story | Undo/redo wired into the UI | S | 1.S2, 2.S2 | — | [#17](https://github.com/duongtugiang/textmate-swift/issues/17) | Engine-backed ⌘Z/⇧⌘Z; menu enabled state via validateMenuItem |
 | [ ] | 2.S5 | story | As a maintainer: cut a release with one tag → signed, notarized .dmg | S | 2.T4 | — | [#18](https://github.com/duongtugiang/textmate-swift/issues/18) | Needs Apple release secrets |
 | [x] | 2.T1 | task | XcodeGen `project.yml` app target for the AppKit UI | M | 0.T1 | — | [#19](https://github.com/duongtugiang/textmate-swift/issues/19) | Universal Release `.app`; `projectFormat: xcode15_3` pinned for CI Xcode 15.4 |
 | [ ] | 2.T2 | task | Port `layout` (10) + `editor` (9) tests + `t_buffer.mm` GUI suites → green | XL | 2.T1 | 19+/19+ | [#20](https://github.com/duongtugiang/textmate-swift/issues/20) | `basic_tree` suites ported against the Swift equivalent |
