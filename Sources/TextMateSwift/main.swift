@@ -2,18 +2,14 @@ import AppKit
 import TextCore
 import UniformTypeIdentifiers
 
-/// First buildable macOS app: a bare editor window with New / Open / Save /
-/// Save As, full text editing (undo, redo, cut, copy, paste, select all via
-/// NSTextView), and a dirty-state indicator.
+/// TextMateSwift — a bare editor whose document surface is the engine-backed
+/// `EditorView` (roadmap 2.S1): the `TextCore.Buffer` is the single source of
+/// truth, rendering and undo/redo both come from the piece tree, and files are
+/// loaded/saved through the engine's bytes. No NSTextView in the pipeline.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
-    private var textView: NSTextView!
+    private var editorView: EditorView!
     private var currentURL: URL?
-    /// The `TextCore` buffer is the document source of truth: files are loaded
-    /// into it, edits are synced back from the view, and saves write from it.
-    /// (Fine-grained edit streaming into the piece tree is Phase 2 work — for
-    /// now the buffer is re-synced on each text change.)
-    private var document = Buffer()
     private var dirty = false {
         didSet { updateTitle() }
     }
@@ -48,30 +44,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
 
-        textView = NSTextView(frame: rect)
-        textView.minSize = NSSize(width: 0, height: 0)
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = true
-        textView.autoresizingMask = [.width]
-        textView.allowsUndo = true
-        textView.isRichText = false
-        textView.usesFontPanel = false
-        textView.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-        textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.textContainer?.widthTracksTextView = false
+        editorView = EditorView(frame: rect)
+        editorView.autoresizingMask = [.width]
+        editorView.onChange = { [weak self] in self?.dirty = true }
+        scrollView.documentView = editorView
 
-        scrollView.documentView = textView
         window.contentView = scrollView
-        window.makeFirstResponder(textView)
+        window.makeFirstResponder(editorView)
         window.makeKeyAndOrderFront(nil)
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(textDidChange(_:)),
-            name: NSText.didChangeNotification,
-            object: textView
-        )
     }
 
     private func buildMenu() {
@@ -99,7 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenu.addItem(menuItem("Save As…", action: #selector(saveDocumentAs(_:)), key: "S"))
         fileItem.submenu = fileMenu
 
-        // Edit menu (nil target → first responder, i.e. the text view)
+        // Edit menu (nil target → first responder, i.e. the EditorView)
         let editItem = NSMenuItem()
         mainMenu.addItem(editItem)
         let editMenu = NSMenu(title: "Edit")
@@ -122,28 +102,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    // MARK: - Dirty state
-
-    @objc private func textDidChange(_ notification: Notification) {
-        // Sync the engine buffer from the editing surface so it stays the
-        // source of truth for the document.
-        document = Buffer(Array(textView.string.utf8))
-        dirty = true
-    }
+    // MARK: - Title / dirty state
 
     private func updateTitle() {
         let name = currentURL?.lastPathComponent ?? "Untitled"
-        window.title = dirty ? "\(name) •" : name
+        window.title = dirty ? "\\(name) •" : name
     }
 
     // MARK: - File actions
 
     @objc func newDocument(_ sender: Any?) {
         currentURL = nil
-        document = Buffer()
-        textView.string = ""
+        editorView.load(Buffer())
         dirty = false
-        window.makeFirstResponder(textView)
+        window.makeFirstResponder(editorView)
     }
 
     @objc func openDocument(_ sender: Any?) {
@@ -162,16 +134,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let data = try Data(contentsOf: url)
             let bytes = [UInt8](data)
             guard TextEncoding.isValidUTF8(bytes) else {
-                presentError("“\(url.lastPathComponent)” is not valid UTF-8 text.")
+                presentError("“\\(url.lastPathComponent)” is not valid UTF-8 text.")
                 return
             }
-            document = Buffer(bytes)
-            textView.string = document.content
+            editorView.load(Buffer(bytes))
             currentURL = url
             dirty = false
-            window.makeFirstResponder(textView)
+            window.makeFirstResponder(editorView)
         } catch {
-            presentError("Could not open “\(url.lastPathComponent)”: \(error.localizedDescription)")
+            presentError("Could not open “\\(url.lastPathComponent)”: \\(error.localizedDescription)")
         }
     }
 
@@ -196,11 +167,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func write(to url: URL) {
         do {
-            // Write from the engine buffer rather than the view.
-            try Data(document.bytes).write(to: url, options: .atomic)
+            // Write from the engine buffer — the piece tree is the document.
+            try Data(editorView.buffer.bytes).write(to: url, options: .atomic)
             dirty = false
         } catch {
-            presentError("Could not save “\(url.lastPathComponent)”: \(error.localizedDescription)")
+            presentError("Could not save “\\(url.lastPathComponent)”: \\(error.localizedDescription)")
         }
     }
 

@@ -11,9 +11,9 @@ import Foundation
 /// that exact behavior, not strict UTF-8 well-formedness.
 public enum TextUTF8 {
 
-    /// Number of bytes in the sequence starting at `byte`, or 0 if it is not a
+    /// Number of bytes in the sequence starting at `byte`, or nil if it is not a
     /// valid lead byte. Uses the same length-code table as the C++ original.
-    private static func sequenceLength(_ byte: UInt8) -> Int? {
+    static func sequenceLength(_ byte: UInt8) -> Int? {
         let codes: [(mask: UInt8, expect: UInt8)] = [
             (0x80, 0x00), // 1 byte  0x00-0x7F
             (0xE0, 0xC0), // 2 bytes 0xC0-0xDF

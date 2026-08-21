@@ -48,8 +48,9 @@ public enum TextEncoding {
 }
 
 /// A minimal undo/redo stack (roadmap 0.T4). Records whole states; callers
-/// decide what a "state" is (e.g. buffer + caret). The AppKit UI additionally
-/// gets full edit-level undo from `NSTextView`'s undo manager.
+/// decide what a "state" is (e.g. buffer + caret). The buffer's command-based
+/// undo (1.S2) supersedes this for document editing; this generic stack remains
+/// for callers that snapshot whole states.
 public struct UndoStack<State> {
     private var undoStack: [State] = []
     private var redoStack: [State] = []
