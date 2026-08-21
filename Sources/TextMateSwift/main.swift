@@ -104,4 +104,8 @@ let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
 app.setActivationPolicy(.regular)
+// A document controller created before the app runs becomes the shared one.
+// This registers TextDocument without an Info.plist (the `swift run` path);
+// the Xcode app's plist registration is equivalent.
+_ = DocumentController()
 app.run()
