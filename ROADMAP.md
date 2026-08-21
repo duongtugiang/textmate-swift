@@ -19,25 +19,37 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 
 ## Current state & next up
 
-**Done (20 of 37 issues closed):** Phase 0 (8/8), Phase 1 (1.S1/1.S2/1.T2/1.T3),
-Phase 2 (2.T1/2.S2/2.S4), and **Phase 3 — document layer (5/5)**: the app is now
-NSDocument-based — multi-file tabs/windows, encoding-aware open/save (UTF-8/16/32
-with BOMs, Windows-1252, MacRoman, Latin-1), unsaved-changes sheets, dirty tracking,
-plus the `t_transcode` (8) and `io/t_path` (10) suites ported green (68 tests total).
+**Done (25 of 37 issues closed):** Phase 0 (8/8), Phase 1 (1.S1/1.S2/1.T1/1.T2/1.T3),
+Phase 2 (2.T1/2.S1/2.S2/2.S3/2.S4/2.T4/2.S5), and **Phase 3 — document layer (5/5)**.
 
-**In flight (2):**
-- **1.T1 (#11)** — UTF-8 line mapping + UTF-16/byte/column conversion done and tested;
-  the O(log n) lookup AC awaits the tree-backed storage upgrade (2.T3 / #16).
+- **Tree-backed storage (2.T3)** — `PieceStorage` is now a treap with O(log n)
+  locate/insert/erase and O(1) byte/newline/UTF-16 aggregates; `Buffer` line/position
+  lookups and the visible-region render path are all O(log n). On 8.4 MB: position
+  lookup ~0.076 ms, line lookup ~0.007 ms, visible render ~0.022 ms (was ~15 ms/line
+  before). Closes the 1.T1, 2.S1, and 2.S3 perf ACs (#11, #14, #16).
+- **CD pipeline (2.T4/2.S5)** — `release.yml`: tag → xcodebuild → codesign (nested
+  framework first) → notarize/staple → .dmg → GitHub Release with auto changelog.
+  Exercised end-to-end on **v0.1.0** (unsigned leg — no Apple secrets configured);
+  `docs/release.md` documents the runbook and required secrets.
+- **Phase 3** — NSDocument-based app: multi-file tabs/windows, encoding-aware
+  open/save (UTF-8/16/32 with BOMs, Windows-1252, MacRoman, Latin-1), unsaved-changes
+  sheets, dirty tracking; `t_transcode` (8) and `io/t_path` (10) suites ported green.
+
+**Next:** **2.T2 (#20)** — port the `layout` (10) + `editor` (9) test suites against
+the Swift piece-tree/layout equivalents (the `basic_tree` cases map onto the new
+treap storage), then **2.T3 (#21)** perf baseline vs the C++ layout (feeds ADR 0002),
+and the **Phase 4** signature features.
 - **2.S1 (#14)** — engine render delivered (single-pass drawing, ~6 ms full redraw on
   8.4 MB); the 10 MB “renders without freezing” AC is tracked by 2.S3 / #16.
 
-**Next:** the large-document milestone — tree-backed storage + line index (closes 1.T1,
-2.S1, and enables **2.S3** smooth scrolling), then **2.T2** (port `layout` + `editor` test
-suites), **2.T3** perf baseline (feeds ADR 0002), **2.T4/2.S5** CD (signed .dmg), and the
-**Phase 4** signature features.
+**Next:** **2.T2** (port `layout` + `editor` test suites against the Swift
+piece-tree/layout equivalents), then **2.T3** perf baseline (feeds ADR 0002), and the
+**Phase 4** signature features. **2.T4/2.S5** CD is delivered (tag → build → .dmg →
+GitHub Release exercised on `v0.1.0`); the signed + notarized leg awaits the Apple
+release secrets.
 
 **Repo chores (blocked on repo admin):** kanban board (`gh auth refresh -s project`),
-branch protection on `main`, Apple release secrets for 2.T4.
+branch protection on `main`, Apple release secrets for the notarized CD leg.
 
 ---
 
@@ -72,11 +84,11 @@ branch protection on `main`, Apple release secrets for 2.T4.
 | [x] | 2.S2 | story | Select text with mouse and keyboard | L | 2.S1 | editor selection tests | [#15](https://github.com/duongtugiang/textmate-swift/issues/15) | Click/drag/shift+arrows/⌘A/double-click word — all ACs met |
 | [ ] | 2.S3 | story | Scroll smoothly through large documents (≥10 MB) | M | 2.S1 | — | [#16](https://github.com/duongtugiang/textmate-swift/issues/16) | Perf baseline vs C++ (2.T3) |
 | [x] | 2.S4 | story | Undo/redo wired into the UI | S | 1.S2, 2.S2 | — | [#17](https://github.com/duongtugiang/textmate-swift/issues/17) | Engine-backed ⌘Z/⇧⌘Z; menu enabled state via validateMenuItem |
-| [ ] | 2.S5 | story | As a maintainer: cut a release with one tag → signed, notarized .dmg | S | 2.T4 | — | [#18](https://github.com/duongtugiang/textmate-swift/issues/18) | Needs Apple release secrets |
+| [x] | 2.S5 | story | As a maintainer: cut a release with one tag → signed, notarized .dmg | S | 2.T4 | — | [#18](https://github.com/duongtugiang/textmate-swift/issues/18) | Pipeline live: `v0.1.0` exercised the unsigned leg; signed+notarized leg awaits Apple release secrets |
 | [x] | 2.T1 | task | XcodeGen `project.yml` app target for the AppKit UI | M | 0.T1 | — | [#19](https://github.com/duongtugiang/textmate-swift/issues/19) | Universal Release `.app`; `projectFormat: xcode15_3` pinned for CI Xcode 15.4 |
 | [ ] | 2.T2 | task | Port `layout` (10) + `editor` (9) tests + `t_buffer.mm` GUI suites → green | XL | 2.T1 | 19+/19+ | [#20](https://github.com/duongtugiang/textmate-swift/issues/20) | `basic_tree` suites ported against the Swift equivalent |
 | [ ] | 2.T3 | task | Rendering perf check against C++ layout baseline (feeds ADR 0002) | M | 2.T2 | — | [#21](https://github.com/duongtugiang/textmate-swift/issues/21) | — |
-| [ ] | 2.T4 | task | CD pipeline: tag → xcodebuild release → codesign → notarize → .dmg → GitHub Release | M | 2.T1 | — | [#22](https://github.com/duongtugiang/textmate-swift/issues/22) | `release.yml` guarded until secrets exist |
+| [x] | 2.T4 | task | CD pipeline: tag → xcodebuild release → codesign → notarize → .dmg → GitHub Release | M | 2.T1 | — | [#22](https://github.com/duongtugiang/textmate-swift/issues/22) | `release.yml` live; nested-framework signing + spctl + notarize/staple; secrets-guarded |
 
 ## Phase 3 — Document layer
 
