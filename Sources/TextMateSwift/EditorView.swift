@@ -77,20 +77,31 @@ final class EditorView: NSView {
 
     // MARK: - Layout
 
-    /// Longest line in UTF-16 units × char width (drives the horizontal scroller).
+    /// Longest line in UTF-16 units × char width (drives the horizontal
+    /// scroller). One byte-level pass over the document (runs per edit, not
+    /// per frame).
     private var contentWidth: CGFloat {
+        let bytes = buffer.bytes
         var maxUnits = 0
         var lineUnits = 0
         var index = 0
-        while index < buffer.utf8Length {
-            let (scalar, length) = buffer.character(at: index)
-            if buffer[index] == 0x0A {
+        while index < bytes.count {
+            let byte = bytes[index]
+            if byte == 0x0A {
                 maxUnits = max(maxUnits, lineUnits)
                 lineUnits = 0
-            } else {
+                index += 1
+            } else if byte < 0x80 {
+                lineUnits += 1
+                index += 1
+            } else if let length = TextUTF8.sequenceLength(byte), index + length <= bytes.count {
+                let scalar = TextUTF8.toScalar(Array(bytes[index..<(index + length)]))
                 lineUnits += scalar > 0xFFFF ? 2 : 1
+                index += length
+            } else {
+                lineUnits += 1
+                index += 1
             }
-            index += length
         }
         maxUnits = max(maxUnits, lineUnits)
         return CGFloat(maxUnits) * charWidth
@@ -121,29 +132,40 @@ final class EditorView: NSView {
         drawCaret()
     }
 
-    /// Draws the visible lines in a single pass over the buffer's bytes (one
-    /// O(n) flatten + scan per redraw, not O(n) per visible line).
+    /// Draws only the visible lines: two O(log n) line lookups + a substring
+    /// of the visible region — cost scales with what's on screen, not the
+    /// document size (roadmap 2.S3).
     private func drawText() {
-        let firstVisible = visibleLineRange.lowerBound
-        let lastVisible = visibleLineRange.upperBound - 1
-        let bytes = buffer.bytes
-        var line = 0
-        var lineStart = 0
-        var index = 0
-        while index <= bytes.count {
-            let atNewline = index < bytes.count && bytes[index] == 0x0A
-            if atNewline || index == bytes.count {
-                if line >= firstVisible && line <= lastVisible && index > lineStart {
-                    let text = String(decoding: bytes[lineStart..<index], as: UTF8.self)
-                    let point = NSPoint(x: textInsetX, y: textInsetY + CGFloat(line) * lineHeight)
-                    (text as NSString).draw(at: point, withAttributes: textAttributes)
-                }
-                if line > lastVisible { break }
+        let lineRange = visibleLineRange
+        let firstLine = lineRange.lowerBound
+        let lastLine = lineRange.upperBound - 1
+        guard buffer.lineCount > 0, firstLine <= lastLine else { return }
+
+        let byteStart = buffer.lineRange(firstLine).lowerBound
+        let byteEnd = buffer.lineRange(lastLine).upperBound
+        let text = buffer.substring(byteStart..<byteEnd)
+
+        var line = firstLine
+        var lineStart = text.startIndex
+        var index = text.startIndex
+        while index < text.endIndex {
+            if text[index] == "\n" {
+                drawLine(String(text[lineStart..<index]), line: line)
                 line += 1
-                lineStart = index + 1
+                lineStart = text.index(after: index)
+                if line > lastLine { break }
             }
-            index += 1
+            index = text.index(after: index)
         }
+        if line <= lastLine && lineStart < text.endIndex {
+            drawLine(String(text[lineStart...]), line: line)
+        }
+    }
+
+    private func drawLine(_ text: String, line: Int) {
+        guard !text.isEmpty else { return }
+        let point = NSPoint(x: textInsetX, y: textInsetY + CGFloat(line) * lineHeight)
+        (text as NSString).draw(at: point, withAttributes: textAttributes)
     }
 
     private func drawSelection() {

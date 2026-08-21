@@ -184,71 +184,36 @@ public struct Buffer: Equatable {
         return index
     }
 
-    // MARK: - Lines & positions
+    // MARK: - Lines & positions (O(log n) via the tree aggregates)
 
     /// Number of lines (1 for an empty buffer; `\n` terminates lines).
-    public var lineCount: Int {
-        var lines = 1
-        for byte in storage.flattenedBytes where byte == 0x0A { lines += 1 }
-        return lines
-    }
+    public var lineCount: Int { storage.newlineCount + 1 }
 
     /// 0-based line index containing the given UTF-8 byte offset.
     public func lineIndex(atUtf8Offset offset: Int) -> Int {
-        let bytes = storage.flattenedBytes
-        let end = min(offset, bytes.count)
-        var line = 0
-        for i in 0..<end where bytes[i] == 0x0A { line += 1 }
-        return line
+        storage.newlines(before: min(max(offset, 0), utf8Length))
     }
 
     /// UTF-8 byte range of a 0-based line, including its trailing `\n`
     /// (or a single trailing byte if the line ends with `\r\n`).
     public func lineRange(_ line: Int) -> Range<Int> {
-        let bytes = storage.flattenedBytes
-        var start = 0
-        var currentLine = 0
-        var index = 0
-        while index < bytes.count && currentLine < line {
-            if bytes[index] == 0x0A { currentLine += 1; start = index + 1 }
-            index += 1
-        }
-        var end = start
-        while end < bytes.count && bytes[end] != 0x0A { end += 1 }
-        if end < bytes.count { end += 1 } // include the newline
-        return start..<end
+        storage.lineRange(line)
     }
 
     // MARK: - UTF-16 mapping (roadmap 1.T1)
 
     /// Converts a UTF-8 byte offset to a UTF-16 code-unit offset (what AppKit
-    /// text APIs use). Out-of-range offsets clamp to the document ends.
+    /// text APIs use), O(log n) via the tree aggregates. Out-of-range offsets
+    /// clamp to the document ends.
     public func utf16Offset(fromByteOffset offset: Int) -> Int {
-        let end = min(max(offset, 0), utf8Length)
-        var units = 0
-        var index = 0
-        while index < end {
-            let (scalar, length) = character(at: index)
-            units += scalar > 0xFFFF ? 2 : 1
-            index += min(length, end - index)
-        }
-        return units
+        storage.utf16Offset(fromByteOffset: offset)
     }
 
-    /// Converts a UTF-16 code-unit offset to a UTF-8 byte offset. Offsets that
-    /// fall inside a surrogate pair snap to the character boundary before it.
+    /// Converts a UTF-16 code-unit offset to a UTF-8 byte offset, O(log n).
+    /// Offsets that fall inside a surrogate pair snap to the character boundary
+    /// before it.
     public func byteOffset(fromUTF16Offset offset: Int) -> Int {
-        guard offset > 0 else { return 0 }
-        var units = 0
-        var index = 0
-        while index < utf8Length && units < offset {
-            let (scalar, length) = character(at: index)
-            let unitCount = scalar > 0xFFFF ? 2 : 1
-            if units + unitCount > offset { break } // snap to boundary
-            units += unitCount
-            index += length
-        }
-        return index
+        storage.byteOffset(fromUTF16Offset: offset)
     }
 
     /// (0-based line, UTF-16 column within that line) for a UTF-8 byte offset.
@@ -264,16 +229,8 @@ public struct Buffer: Equatable {
     public func byteOffset(atLine line: Int, utf16Column column: Int) -> Int {
         let range = lineRange(max(0, min(line, lineCount - 1)))
         let contentEnd = range.upperBound - (range.upperBound > range.lowerBound && storage[range.upperBound - 1] == 0x0A ? 1 : 0)
-        var units = 0
-        var index = range.lowerBound
-        while index < contentEnd && units < column {
-            let (scalar, length) = character(at: index)
-            let unitCount = scalar > 0xFFFF ? 2 : 1
-            if units + unitCount > column { break }
-            units += unitCount
-            index += length
-        }
-        return index
+        let lineBytes = storage.substr(range.lowerBound..<contentEnd)
+        return range.lowerBound + PieceStorage.byteOffsetForUTF16(lineBytes, upTo: column)
     }
 
     /// Equality by document content only (undo stacks are not part of the
