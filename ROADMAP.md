@@ -34,11 +34,11 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 
 | Status | ID | Kind | Title | Effort | Depends on | Gate | Issue |
 |---|---|---|---|---|---|---|---|
-| [ ] | 1.S1 | story | Type and delete text; cursor follows edits | M | 1.T1 | buffer/text .cc green | [#9](https://github.com/duongtugiang/textmate-swift/issues/9) |
-| [ ] | 1.S2 | story | Undo/redo my edits (⌘Z / ⇧⌘Z) | M | 0.T4 | — | [#10](https://github.com/duongtugiang/textmate-swift/issues/10) |
-| [ ] | 1.T1 | task | Position mapping: line/column ↔ UTF-16 offset | M | 0.T2 | — | [#11](https://github.com/duongtugiang/textmate-swift/issues/11) |
-| [ ] | 1.T2 | task | Port remaining pure-C++ buffer tests + `text` utf8/decode/encode/ctype (~20) → green | M | 0.T3, 1.T1 | ~20/~20 | [#12](https://github.com/duongtugiang/textmate-swift/issues/12) |
-| [ ] | 1.T3 | task | UTF-8 validation & normalize utilities (spec: `text/utf8`, `text/transcode`) | M | 1.T2 | — | [#13](https://github.com/duongtugiang/textmate-swift/issues/13) |
+| [~] | 1.S1 | story | Type and delete text; cursor follows edits (works via the app's text view; engine render is Phase 2) | M | 1.T1 | buffer/text .cc green | [#9](https://github.com/duongtugiang/textmate-swift/issues/9) |
+| [~] | 1.S2 | story | Undo/redo my edits (⌘Z / ⇧⌘Z) (works via NSTextView undo manager) | M | 0.T4 | — | [#10](https://github.com/duongtugiang/textmate-swift/issues/10) |
+| [~] | 1.T1 | task | Position mapping: line/column ↔ UTF-16 offset (Buffer has UTF-8 line mapping; UTF-16/column pending) | M | 0.T2 | — | [#11](https://github.com/duongtugiang/textmate-swift/issues/11) |
+| [~] | 1.T2 | task | Port remaining pure-C++ buffer tests + `text` utf8/decode/encode/ctype (~20) → green (9 cases green; rest deferred) | M | 0.T3, 1.T1 | ~20/~20 | [#12](https://github.com/duongtugiang/textmate-swift/issues/12) |
+| [x] | 1.T3 | task | UTF-8 validation & normalize utilities (spec: `text/utf8`, `text/transcode`) | M | 1.T2 | — | [#13](https://github.com/duongtugiang/textmate-swift/issues/13) |
 
 ## Phase 2 — Editing, rendering & delivery (AppKit)
 
