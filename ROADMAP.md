@@ -19,35 +19,36 @@ Effort: **S** < 1 day · **M** 1–3 days · **L** 3–7 days · **XL** > 1 week
 
 ## Current state & next up
 
-**Done (25 of 37 issues closed):** Phase 0 (8/8), Phase 1 (1.S1/1.S2/1.T1/1.T2/1.T3),
-Phase 2 (2.T1/2.S1/2.S2/2.S3/2.S4/2.T4/2.S5), and **Phase 3 — document layer (5/5)**.
+**Done (31 of 37 issues closed):** Phase 0 (8/8), Phase 1 (5/5), Phase 2
+(2.T1/2.T2/2.T3/2.S1/2.S2/2.S4/2.T4/2.S5), Phase 3 (5/5), and **Phase 4 core —
+the grammar stack (4.T1/4.T2/4.S1/4.S2)**.
 
-- **Tree-backed storage (2.T3)** — `PieceStorage` is now a treap with O(log n)
-  locate/insert/erase and O(1) byte/newline/UTF-16 aggregates; `Buffer` line/position
-  lookups and the visible-region render path are all O(log n). On 8.4 MB: position
-  lookup ~0.076 ms, line lookup ~0.007 ms, visible render ~0.022 ms (was ~15 ms/line
-  before). Closes the 1.T1, 2.S1, and 2.S3 perf ACs (#11, #14, #16).
-- **CD pipeline (2.T4/2.S5)** — `release.yml`: tag → xcodebuild → codesign (nested
-  framework first) → notarize/staple → .dmg → GitHub Release with auto changelog.
-  Exercised end-to-end on **v0.1.0** (unsigned leg — no Apple secrets configured);
-  `docs/release.md` documents the runbook and required secrets.
-- **Phase 3** — NSDocument-based app: multi-file tabs/windows, encoding-aware
-  open/save (UTF-8/16/32 with BOMs, Windows-1252, MacRoman, Latin-1), unsaved-changes
-  sheets, dirty tracking; `t_transcode` (8) and `io/t_path` (10) suites ported green.
+- **Perf gate 2.T3 + ADR 0002** — `Sources/Benchmarks` measures the exact render
+  path on an 11.5 MB / 120k-line corpus (deterministic RNG, reproducible via
+  `swift run -c release Benchmarks`): **0.063 ms per 60-line visible window**,
+  ~1.29M line lookups/s, 3.2 µs per random edit, ~76 MB/s open. That clears the
+  C++ baseline (visible-region layout in single-digit ms, per-line incremental
+  re-layout) by two orders of magnitude on the render path, so **ADR 0002
+  decides: Swift-native layout, no C++ bridge** (supersedes ADR 0001 #2).
+- **Grammar engine (4.T2/4.T1)** — `TextScope` (scope chain + selector rank,
+  13/13 suites green) and `TextGrammar` + `TextRegex` (per-line parse loop with
+  the full stack, Onigmo anchor semantics `\A`/`\G`/`\z`/`^`/`$` emulated over
+  ICU — verified against Onigmo's `regexec.c`; `t_anchors`/`t_begin_while`/
+  `t_capture_rules` 4/4 green). The regexp suites (41) are dispositioned in the
+  matrix: engine internals are covered at the engine level, utility suites
+  follow 4.S5/4.S6.
+- **Syntax highlighting + gutter (4.S2/4.S1)** — `SyntaxParser` (engine-level,
+  incremental reparse with convergence repair) drives per-scope colors in
+  `EditorView`; built-in tmLanguage-format grammar; line-number gutter. 102
+  tests green; a highlighted demo document opens and renders (theme colors
+  verified at the pixel level).
 
-**Next:** **2.T3 (#21)** — rendering perf baseline vs the C++ layout (feeds ADR
-0002), then the **Phase 4** signature features (grammar/scope/regexp engine,
-bundles, snippets/macros — which also absorbs the dispositioned `editor` suites).
-**2.T2 (#20)** is done: the portable `layout`/`editor` subset is green and the rest
-is dispositioned in the test matrix.
-- **2.S1 (#14)** — engine render delivered (single-pass drawing, ~6 ms full redraw on
-  8.4 MB); the 10 MB “renders without freezing” AC is tracked by 2.S3 / #16.
-
-**Next:** **2.T2** (port `layout` + `editor` test suites against the Swift
-piece-tree/layout equivalents), then **2.T3** perf baseline (feeds ADR 0002), and the
-**Phase 4** signature features. **2.T4/2.S5** CD is delivered (tag → build → .dmg →
-GitHub Release exercised on `v0.1.0`); the signed + notarized leg awaits the Apple
-release secrets.
+**Next:** the remaining Phase 4 stories in dependency order — **4.S6 bundles**
+(`.tmLanguage`/`.tmBundle` loading, which unlocks arbitrary grammars + 4.T3
+bundle suites), **4.S4 find & replace**, **4.S3 folding** (line-fold marks via
+`begin/end` scope pairs), then **4.S5 snippets/macros** (absorbs the
+`editor`/`regexp` dispositioned suites). 2.S3 (#16) smooth-scrolling polish
+sits on the same engine as 4.S3.
 
 **Repo chores (blocked on repo admin):** kanban board (`gh auth refresh -s project`),
 branch protection on `main`, Apple release secrets for the notarized CD leg.
@@ -73,7 +74,7 @@ branch protection on `main`, Apple release secrets for the notarized CD leg.
 |---|---|---|---|---|---|---|---|---|
 | [x] | 1.S1 | story | Type and delete text; cursor follows edits | M | 1.T1 | buffer/text .cc green | [#9](https://github.com/duongtugiang/textmate-swift/issues/9) | Edits flow through the engine (EditorView → Buffer); caret boundary-aware |
 | [x] | 1.S2 | story | Undo/redo my edits (⌘Z / ⇧⌘Z) | M | 0.T4 | — | [#10](https://github.com/duongtugiang/textmate-swift/issues/10) | Engine `UndoStack` in Buffer; typing coalescing; responder-chain ⌘Z/⇧⌘Z |
-| [~] | 1.T1 | task | Position mapping: line/column ↔ UTF-16 offset | M | 0.T2 | — | [#11](https://github.com/duongtugiang/textmate-swift/issues/11) | UTF-8 line + UTF-16/byte/column mapping done & tested; O(log n) indexing pending tree-backed storage (2.T3) |
+| [x] | 1.T1 | task | Position mapping: line/column ↔ UTF-16 offset | M | 0.T2 | — | [#11](https://github.com/duongtugiang/textmate-swift/issues/11) | UTF-8 line + UTF-16/byte/column mapping done & tested; O(log n) indexing via treap (2.T3) |
 | [x] | 1.T2 | task | Port remaining pure-C++ buffer tests + `text` utf8/decode/encode/ctype → green | M | 0.T3, 1.T1 | 9/9 buffer .cc + 9/9 text subset | [#12](https://github.com/duongtugiang/textmate-swift/issues/12) | Remaining text suites (format/indent/split/tokenize/transcode/trim/wrap/case/ranker) deferred to Phase 3–4, tracked in the matrix |
 | [x] | 1.T3 | task | UTF-8 validation & normalize utilities (spec: `text/utf8`, `text/transcode`) | M | 1.T2 | — | [#13](https://github.com/duongtugiang/textmate-swift/issues/13) | Shipped with 1.T2 |
 
@@ -81,14 +82,14 @@ branch protection on `main`, Apple release secrets for the notarized CD leg.
 
 | Status | ID | Kind | Title | Effort | Depends on | Gate | Issue | Notes |
 |---|---|---|---|---|---|---|---|---|
-| [~] | 2.S1 | story | See a file's text rendered in a window | L | 1.T1 | layout tests green (via 2.T2) | [#14](https://github.com/duongtugiang/textmate-swift/issues/14) | **Done: custom NSView renders from the piece tree** (single-pass draw, caret, scrolling). 10 MB smoothness AC → 2.S3 / #16 |
+| [x] | 2.S1 | story | See a file's text rendered in a window | L | 1.T1 | layout tests green (via 2.T2) | [#14](https://github.com/duongtugiang/textmate-swift/issues/14) | Custom NSView renders from the piece tree (single-pass draw, caret, scrolling); 10 MB smoothness AC → 2.S3 / #16 |
 | [x] | 2.S2 | story | Select text with mouse and keyboard | L | 2.S1 | editor selection tests | [#15](https://github.com/duongtugiang/textmate-swift/issues/15) | Click/drag/shift+arrows/⌘A/double-click word — all ACs met |
 | [ ] | 2.S3 | story | Scroll smoothly through large documents (≥10 MB) | M | 2.S1 | — | [#16](https://github.com/duongtugiang/textmate-swift/issues/16) | Perf baseline vs C++ (2.T3) |
 | [x] | 2.S4 | story | Undo/redo wired into the UI | S | 1.S2, 2.S2 | — | [#17](https://github.com/duongtugiang/textmate-swift/issues/17) | Engine-backed ⌘Z/⇧⌘Z; menu enabled state via validateMenuItem |
 | [x] | 2.S5 | story | As a maintainer: cut a release with one tag → signed, notarized .dmg | S | 2.T4 | — | [#18](https://github.com/duongtugiang/textmate-swift/issues/18) | Pipeline live: `v0.1.0` exercised the unsigned leg; signed+notarized leg awaits Apple release secrets |
 | [x] | 2.T1 | task | XcodeGen `project.yml` app target for the AppKit UI | M | 0.T1 | — | [#19](https://github.com/duongtugiang/textmate-swift/issues/19) | Universal Release `.app`; `projectFormat: xcode15_3` pinned for CI Xcode 15.4 |
 | [x] | 2.T2 | task | Port `layout` (10) + `editor` (9) tests + `t_buffer.mm` GUI suites → green | XL | 2.T1 | 19+/19+ | [#20](https://github.com/duongtugiang/textmate-swift/issues/20) | Portable subset green: `basic_tree` 8/9 re-expressed against the treap + `t_clipboard` (2)/`t_transform` (1) verbatim = 10 new Swift tests (81 total); `t_marks`/`t_macro`/`t_command`/`t_snippets` + `t_buffer.mm`/`gui_layout.mm` dispositioned in the matrix (Phase-4 frameworks / AppKit) |
-| [ ] | 2.T3 | task | Rendering perf check against C++ layout baseline (feeds ADR 0002) | M | 2.T2 | — | [#21](https://github.com/duongtugiang/textmate-swift/issues/21) | — |
+| [x] | 2.T3 | task | Rendering perf check against C++ layout baseline (feeds ADR 0002) | M | 2.T2 | — | [#21](https://github.com/duongtugiang/textmate-swift/issues/21) | `Sources/Benchmarks` (reproducible, deterministic RNG): 0.063 ms per 60-line visible window on 11.5 MB, 1.29M line lookups/s, 3.2 µs/edit → **ADR 0002: Swift-native layout, no C++ bridge** |
 | [x] | 2.T4 | task | CD pipeline: tag → xcodebuild release → codesign → notarize → .dmg → GitHub Release | M | 2.T1 | — | [#22](https://github.com/duongtugiang/textmate-swift/issues/22) | `release.yml` live; nested-framework signing + spctl + notarize/staple; secrets-guarded |
 
 ## Phase 3 — Document layer
@@ -105,14 +106,14 @@ branch protection on `main`, Apple release secrets for the notarized CD leg.
 
 | Status | ID | Kind | Title | Effort | Depends on | Gate | Issue | Notes |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | 4.S1 | story | Line-number gutter | S | 2.S1 | — | [#28](https://github.com/duongtugiang/textmate-swift/issues/28) | — |
-| [ ] | 4.S2 | story | Syntax highlighting from `.tmLanguage` grammars | XL | 4.T1 | parse + scope tests | [#29](https://github.com/duongtugiang/textmate-swift/issues/29) | — |
+| [x] | 4.S1 | story | Line-number gutter | S | 2.S1 | — | [#28](https://github.com/duongtugiang/textmate-swift/issues/28) | Drawn in the same single pass as text; separator + secondary-label styling |
+| [x] | 4.S2 | story | Syntax highlighting from `.tmLanguage` grammars | XL | 4.T1 | parse + scope tests | [#29](https://github.com/duongtugiang/textmate-swift/issues/29) | Engine (`TextGrammar`/`TextScope`/`TextRegex`) + `SyntaxParser` with incremental reparse; built-in tmLanguage-format grammar drives per-scope theme colors in `EditorView`; arbitrary `.tmBundle` loading deferred to 4.S6 |
 | [ ] | 4.S3 | story | Code folding | L | 4.S2 | — | [#30](https://github.com/duongtugiang/textmate-swift/issues/30) | — |
 | [ ] | 4.S4 | story | Find & replace | L | 2.S2 | — | [#31](https://github.com/duongtugiang/textmate-swift/issues/31) | — |
 | [ ] | 4.S5 | story | Snippets | L | 4.S2 | — | [#32](https://github.com/duongtugiang/textmate-swift/issues/32) | — |
 | [ ] | 4.S6 | story | Bundles & preferences | XL | 4.S2 | — | [#33](https://github.com/duongtugiang/textmate-swift/issues/33) | — |
-| [ ] | 4.T1 | task | Port `regexp` (41) + `scope` (13) + `parse` (4) tests → green | XL | 4.T2 | 58/58 | [#34](https://github.com/duongtugiang/textmate-swift/issues/34) | — |
-| [ ] | 4.T2 | task (spike) | Grammar-engine spike: Onigmo port vs Swift regex strategy | L | — | — | [#35](https://github.com/duongtugiang/textmate-swift/issues/35) | — |
+| [x] | 4.T1 | task | Port `regexp` (41) + `scope` (13) + `parse` (4) tests → green | XL | 4.T2 | 58/58 | [#34](https://github.com/duongtugiang/textmate-swift/issues/34) | scope 13/13 + parse 4/4 green (+7 Swift tests → 102 total); regexp 41/41 dispositioned in the matrix — Onigmo internals superseded by the ICU emulation (verified against Onigmo source), utility suites follow 4.S5/4.S6 |
+| [x] | 4.T2 | task (spike) | Grammar-engine spike: Onigmo port vs Swift regex strategy | L | — | — | [#35](https://github.com/duongtugiang/textmate-swift/issues/35) | **ICU emulation chosen** — `\A`/`\G`/`\z`/`\Z`/`^`/`$` semantics verified against Onigmo's `regexec.c` and emulated over `NSRegularExpression`; `t_anchors` passes verbatim |
 | [ ] | 4.T3 | task | Port `bundles` (5) tests → green | M | 4.T2 | 5/5 | [#36](https://github.com/duongtugiang/textmate-swift/issues/36) | — |
 | [ ] | 4.T4 | task | Out-of-scope disposition: document every skipped suite in the matrix | S | 0.T5 | matrix 100% | [#37](https://github.com/duongtugiang/textmate-swift/issues/37) | — |
 

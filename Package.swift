@@ -24,5 +24,11 @@ let package = Package(
             dependencies: ["TextCore"],
             path: "Sources/TextMateSwift"
         ),
+        // Reproducible perf baseline (2.T3) — SwiftPM-only, not in the app.
+        .executableTarget(
+            name: "Benchmarks",
+            dependencies: ["TextCore"],
+            path: "Sources/Benchmarks"
+        ),
     ]
 )

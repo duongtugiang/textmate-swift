@@ -13,20 +13,28 @@ editor core and grows feature-by-feature.
 | UI layer | AppKit (`NSView`) for the text area |
 | MVP scope | Bare editor: open, edit, select, undo/redo, save |
 
-See [docs/decisions/](docs/decisions/) for rationale (ADR 0002 — C++ bridge vs.
-Swift-first — is decided at the Phase 2 perf gate).
+See [docs/decisions/](docs/decisions/) — ADR 0002 (decided at the Phase 2 perf
+gate) resolves the C++ bridge vs. Swift-first question in favor of Swift-native
+layout.
 
 ## Status
 
-**Phases 0–3 live** — a document-based AppKit editor whose document surface is a
-custom `NSView` that renders directly from the `TextCore` piece tree (no `NSTextView`
-in the pipeline): multiple files in tabs/windows (NSDocument), encoding-aware open/save
-(UTF-8/16/32 with BOMs, Windows-1252, MacRoman, Latin-1), unsaved-changes sheets on
-close/quit, engine-backed undo/redo (⌘Z / ⇧⌘Z), cut/copy/paste, mouse + keyboard
-selection, word select, caret navigation, and a dirty-state indicator. `TextCore` ships
-with piece-tree storage, command-based undo with typing coalescing, UTF-8 utilities,
-position mapping (byte ↔ UTF-16 ↔ line/column), charset transcoding, and path
-utilities — **68 tests green** (38 ported from the original C++ suites).
+**Phases 0–4 core live** — a document-based AppKit editor whose document surface
+is a custom `NSView` that renders directly from the `TextCore` piece tree (no
+`NSTextView` in the pipeline): multiple files in tabs/windows (NSDocument),
+encoding-aware open/save (UTF-8/16/32 with BOMs, Windows-1252, MacRoman,
+Latin-1), unsaved-changes sheets on close/quit, engine-backed undo/redo
+(⌘Z / ⇧⌘Z), cut/copy/paste, mouse + keyboard selection, word select, caret
+navigation, a dirty-state indicator, **syntax highlighting** from a
+tmLanguage-format grammar (engine-level incremental reparse, per-scope theme
+colors), and a **line-number gutter**. `TextCore` ships with piece-tree storage
+(treap, O(log n) locate/insert/erase), command-based undo with typing
+coalescing, UTF-8 utilities, position mapping (byte ↔ UTF-16 ↔ line/column),
+charset transcoding, path utilities, and the grammar/scope/parse engine
+(Onigmo anchor semantics emulated over ICU) — **102 tests green** (50+ ported
+from the original C++ suites). The perf gate (2.T3) is passed: 0.063 ms per
+60-line visible window on an 11.5 MB document (`swift run -c release
+Benchmarks`).
 
 The full backlog (18 stories + 19 tasks across 5 phases) lives in
 [GitHub Issues](https://github.com/duongtugiang/textmate-swift/issues); the phase
@@ -47,8 +55,8 @@ xcodebuild -project TextMateSwift.xcodeproj -scheme TextMateSwift -configuration
 open Build/Products/Release/TextMateSwift.app
 ```
 
-Large-document smoothness (≥10 MB) and O(log n) position lookup are the next milestone
-(tree-backed storage — issues #11, #14, #16).
+Remaining Phase 4 stories: bundles (`.tmBundle` loading), find & replace, code
+folding, and snippets/macros (issues #30–33, #36).
 
 ## Project practices
 
