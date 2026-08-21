@@ -77,6 +77,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
         editMenu.addItem(.separator())
         editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenu.addItem(.separator())
+        // Find & replace (4.S4) — actions resolve through the responder chain
+        // to the first responder (EditorView or the FindBar's fields).
+        editMenu.addItem(NSMenuItem(title: "Find…", action: Selector(("showFindBar:")), keyEquivalent: "f"))
+        editMenu.addItem(NSMenuItem(title: "Find Next", action: Selector(("findNext:")), keyEquivalent: "g"))
+        editMenu.addItem(NSMenuItem(title: "Find Previous", action: Selector(("findPrevious:")), keyEquivalent: "G"))
         editItem.submenu = editMenu
 
         // Bundles menu — load .tmLanguage grammars / .tmBundle directories
@@ -85,6 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(bundlesItem)
         let bundlesMenu = NSMenu(title: "Bundles")
         bundlesMenu.addItem(NSMenuItem(title: "Load Grammar…", action: Selector(("loadGrammar:")), keyEquivalent: ""))
+        bundlesMenu.addItem(NSMenuItem(title: "Insert Snippet…", action: Selector(("insertSnippet:")), keyEquivalent: ""))
         bundlesItem.submenu = bundlesMenu
 
         // Window menu — the window list (with ⌘` cycling) is added automatically

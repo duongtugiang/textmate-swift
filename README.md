@@ -27,14 +27,24 @@ Latin-1), unsaved-changes sheets on close/quit, engine-backed undo/redo
 (⌘Z / ⇧⌘Z), cut/copy/paste, mouse + keyboard selection, word select, caret
 navigation, a dirty-state indicator, **syntax highlighting** from a
 tmLanguage-format grammar (engine-level incremental reparse, per-scope theme
-colors), and a **line-number gutter**. `TextCore` ships with piece-tree storage
+colors), a **line-number gutter**, **find & replace** (⌘F find bar with live
+match highlighting, ⌘G/⇧⌘G, replace/replace-all), **code folding** (grammar
+markers + indented-block folding, gutter fold controls, ⌘⌥[/⌘⌥]), and
+**snippets** (the full `snippet.cc` engine: `$1`/`$2` tab stops, `${1:default}`
+fields, `${1/pattern/format/}` mirrors, `${1|a,b|}` choices — Tab/⇧Tab cycles
+fields, mirrors update live as you type, via **Bundles ▸ Insert Snippet…**).
+`TextCore` ships with piece-tree storage
 (treap, O(log n) locate/insert/erase), command-based undo with typing
 coalescing, UTF-8 utilities, position mapping (byte ↔ UTF-16 ↔ line/column),
 charset transcoding, path utilities, the grammar/scope/parse engine (Onigmo
-anchor semantics emulated over ICU), and the **bundles framework** (old-style
+anchor semantics emulated over ICU), a node-based `format_string` engine
+(deferred case changes, legacy conditions, Oniguruma `^` semantics over ICU),
+the **snippet engine** (fields/mirrors/choices, dependency graph, snippet
+stack), and the **bundles framework** (old-style
 plist parser, bundle-item index with scope-ranked querying, per-scope
-`shellVariables` with v1 shadowing, shell-command requirements) — **107 tests
-green** (60+ ported from the original C++ suites). Bundles ▸ **Load Grammar…**
+`shellVariables` with v1 shadowing, shell-command requirements) — **126 tests
+green** (60+ ported from the original C++ suites, incl. `t_format_string` 7/7
+and `t_snippets`). Bundles ▸ **Load Grammar…**
 loads any `.tmLanguage` / `.tmBundle` from disk and drives highlighting with
 it. The perf gate (2.T3) is passed: 0.063 ms per
 60-line visible window on an 11.5 MB document (`swift run -c release
@@ -59,8 +69,6 @@ xcodebuild -project TextMateSwift.xcodeproj -scheme TextMateSwift -configuration
 open Build/Products/Release/TextMateSwift.app
 ```
 
-Remaining Phase 4 stories: find & replace, code folding, and snippets/macros
-(issues #30–32).
 
 ## Project practices
 

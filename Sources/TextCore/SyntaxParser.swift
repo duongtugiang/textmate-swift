@@ -41,6 +41,17 @@ public final class SyntaxParser {
         }
     }
 
+    /// Per-line fold info (4.S3) from the grammar's fold markers plus the
+    /// default indented-block folding.
+    public func foldInfo(tabSize: Int = 4) -> [LineFoldInfo] {
+        TextFolds.lineInfo(
+            lines: lines,
+            startPattern: grammar.foldingStartMarker,
+            stopPattern: grammar.foldingStopMarker,
+            tabSize: tabSize
+        )
+    }
+
     /// Full (re)parse — after opening a document or replacing its content.
     public func reload(_ newText: String) {
         text = newText
@@ -136,6 +147,8 @@ public final class SyntaxParser {
 public enum BuiltInGrammar {
     public static let plist: [String: Any] = [
         "scopeName": "source.simple",
+        "foldingStartMarker": "\\{",
+        "foldingStopMarker": "\\}",
         "patterns": [
             ["include": "#comments"],
             ["include": "#strings"],

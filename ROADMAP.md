@@ -43,10 +43,27 @@ the grammar stack + bundles (4.T1/4.T2/4.T3/4.S1/4.S2/4.S6)**.
   tests green; a highlighted demo document opens and renders (theme colors
   verified at the pixel level).
 
-**Next:** the remaining Phase 4 stories in dependency order — **4.S4 find &
-replace**, **4.S3 folding** (line-fold marks via `begin/end` scope pairs), then
-**4.S5 snippets/macros** (absorbs the `editor`/`regexp` dispositioned suites).
-2.S3 (#16) smooth-scrolling polish sits on the same engine as 4.S3.
+- **Find & replace (4.S4)** — `FindBar` (⌘F) with live match highlighting,
+  next/prev (⌘G/⇧⌘G), replace/replace-all, case-sensitive toggle, all
+  round-tripping through the byte-offset engine (multibyte-safe).
+- **Code folding (4.S3)** — `TextFolds`: grammar `foldingStartMarker`/
+  `foldingStopMarker` plus TextMate's default indented-block algorithm
+  (indent-start stores the parent indent so equal-indent blocks fold); fold
+  markers in the gutter with ⌘⌥[/⌘⌥] toggling; rendering, hit-testing and
+  caret movement all map through the visible-row index.
+- **Snippets (4.S5)** — the full `snippet.cc` engine: `TextFormatString`
+  rewritten node-for-node (deferred `\U`/`\u`/`\L`/`\l` case changes,
+  `${N:/…}` transforms, legacy `(?N:…)` conditions, `\xHH` bytes, `escape`,
+  `capitalize`/`asciify`, and Oniguruma `^`-anchor semantics over ICU via
+  full-range matching); `TextSnippets` (fields/mirrors/choices, dependency
+  graph, stack); **t_format_string (7/7) + t_snippets ported green** — 126
+  tests total. The app routes every edit through the snippet stack when
+  active (mirror updates on typing, Tab/⇧Tab field navigation, Esc to drop)
+  via **Bundles ▸ Insert Snippet…**.
+
+**Phase 4 is complete.** 2.S3 (#16) smooth-scrolling polish remains as the
+only open roadmap item; every Phase-4 story is delivered and the remaining
+issue backlog is empty.
 
 **Repo chores (blocked on repo admin):** kanban board (`gh auth refresh -s project`),
 branch protection on `main`, Apple release secrets for the notarized CD leg.
@@ -106,9 +123,9 @@ branch protection on `main`, Apple release secrets for the notarized CD leg.
 |---|---|---|---|---|---|---|---|---|
 | [x] | 4.S1 | story | Line-number gutter | S | 2.S1 | — | [#28](https://github.com/duongtugiang/textmate-swift/issues/28) | Drawn in the same single pass as text; separator + secondary-label styling |
 | [x] | 4.S2 | story | Syntax highlighting from `.tmLanguage` grammars | XL | 4.T1 | parse + scope tests | [#29](https://github.com/duongtugiang/textmate-swift/issues/29) | Engine (`TextGrammar`/`TextScope`/`TextRegex`) + `SyntaxParser` with incremental reparse; built-in tmLanguage-format grammar drives per-scope theme colors in `EditorView`; arbitrary `.tmBundle` loading deferred to 4.S6 |
-| [ ] | 4.S3 | story | Code folding | L | 4.S2 | — | [#30](https://github.com/duongtugiang/textmate-swift/issues/30) | — |
-| [ ] | 4.S4 | story | Find & replace | L | 2.S2 | — | [#31](https://github.com/duongtugiang/textmate-swift/issues/31) | — |
-| [ ] | 4.S5 | story | Snippets | L | 4.S2 | — | [#32](https://github.com/duongtugiang/textmate-swift/issues/32) | — |
+| [x] | 4.S3 | story | Code folding | L | 4.S2 | — | [#30](https://github.com/duongtugiang/textmate-swift/issues/30) | `TextFolds` — grammar markers + indented-block folding; gutter fold markers; ⌘⌥[/⌘⌥]; row mapping through the visible index |
+| [x] | 4.S4 | story | Find & replace | L | 2.S2 | — | [#31](https://github.com/duongtugiang/textmate-swift/issues/31) | `FindBar` with live highlighting, ⌘G/⇧⌘G, replace/replace-all, case toggle |
+| [x] | 4.S5 | story | Snippets | L | 4.S2 | — | [#32](https://github.com/duongtugiang/textmate-swift/issues/32) | Full `snippet.cc` port: `TextFormatString` node engine + `TextSnippets` stack; t_format_string 7/7 + t_snippets green; app routes edits through the stack; Insert Snippet… command |
 | [x] | 4.S6 | story | Bundles & preferences | XL | 4.S2 | — | [#33](https://github.com/duongtugiang/textmate-swift/issues/33) | Bundles engine (`TextPlist` old-style parser, `TextFormatString` expansion, `BundleItem`/`BundleIndex` query + scope_variables + requirements) + **Bundles ▸ Load Grammar…** menu: any `.tmLanguage`/`.tmBundle` loads and drives highlighting; preferences (settings editor UI) dispositioned out of the bare-editor MVP — engine-level `scope_variables` resolution is delivered and tested |
 | [x] | 4.T1 | task | Port `regexp` (41) + `scope` (13) + `parse` (4) tests → green | XL | 4.T2 | 58/58 | [#34](https://github.com/duongtugiang/textmate-swift/issues/34) | scope 13/13 + parse 4/4 green (+7 Swift tests → 102 total); regexp 41/41 dispositioned in the matrix — Onigmo internals superseded by the ICU emulation (verified against Onigmo source), utility suites follow 4.S5/4.S6 |
 | [x] | 4.T2 | task (spike) | Grammar-engine spike: Onigmo port vs Swift regex strategy | L | — | — | [#35](https://github.com/duongtugiang/textmate-swift/issues/35) | **ICU emulation chosen** — `\A`/`\G`/`\z`/`\Z`/`^`/`$` semantics verified against Onigmo's `regexec.c` and emulated over `NSRegularExpression`; `t_anchors` passes verbatim |

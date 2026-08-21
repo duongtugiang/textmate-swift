@@ -151,8 +151,12 @@ final class GrammarScopes {
 // MARK: - Grammar
 
 public final class Grammar {
-
     public let root: GrammarRule
+    /// Grammar-root `foldingStartMarker` / `foldingStopMarker` regexes (the
+    /// legacy fold-marker path in `folds.cc` `setup_patterns`).
+    public let foldingStartMarker: String?
+    public let foldingStopMarker: String?
+
 
     static let sizeMax = Int.max
 
@@ -166,6 +170,8 @@ public final class Grammar {
         Grammar.compilePatterns(root)
         root.isRoot = true
         self.root = root
+        self.foldingStartMarker = plist["foldingStartMarker"] as? String
+        self.foldingStopMarker = plist["foldingStopMarker"] as? String
     }
 
     /// `grammar_t::seed()`.

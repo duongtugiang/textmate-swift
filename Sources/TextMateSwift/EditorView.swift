@@ -56,9 +56,116 @@ final class EditorView: NSView {
     private var lastEditLine = 0
     private var lastEditEndLine = 0
 
+    // MARK: - Find state (4.S4)
+
+    /// Byte ranges of all current find matches (non-empty query only).
+    private var findMatches: [Range<Int>] = []
+    /// Index into `findMatches` of the active match (⌘G target).
+    private var currentFindIndex = -1
+    private var findQuery = ""
+    private var findCaseSensitive = false
+    /// Set by the window controller to reveal the find bar (⌘F).
+    var onShowFindBar: (() -> Void)?
+    /// Called after find state changes (the bar shows match counts).
+    var onFindStateChange: (() -> Void)?
+
+    var findMatchCount: Int { findMatches.count }
+
+    private var currentFindRange: Range<Int>? {
+        guard currentFindIndex >= 0, currentFindIndex < findMatches.count else { return nil }
+        return findMatches[currentFindIndex]
+    }
+
     /// Column (in UTF-16 units) preserved across vertical caret moves so moving
     /// up/down past shorter lines returns to the original column.
     private var stickyColumn: Int?
+
+    // MARK: - Folding state (4.S3)
+
+    /// Foldable ranges as `startLine..<lastHidden + 1` (start line visible).
+    private var foldableRanges: [Range<Int>] = []
+    /// Indices into `foldableRanges` that are currently folded.
+    private var foldedSet: Set<Int> = []
+    /// Folded ranges currently hiding lines.
+    private var foldedRanges: [Range<Int>] = []
+    /// Document lines currently visible, in document order (folded lines
+    /// removed) — the row→line mapping for all drawing.
+    private var visibleLines: [Int] = []
+
+    private var visibleLineCount: Int { visibleLines.count }
+
+    /// A line is hidden when it is inside a folded range past the marker line.
+    private func isLineVisible(_ line: Int) -> Bool {
+        for range in foldedRanges where line > range.lowerBound && line < range.upperBound {
+            return false
+        }
+        return true
+    }
+
+    private func row(ofLine line: Int) -> Int? {
+        visibleLines.firstIndex(of: line)
+    }
+
+    private func refreshVisibleLines() {
+        visibleLines = (0..<buffer.lineCount).filter { isLineVisible($0) }
+    }
+
+    /// Recomputes foldable ranges from the grammar + indentation. Drops folds
+    /// that no longer exist.
+    private func refreshFolds() {
+        let newRanges = TextFolds.foldableRanges(syntax.foldInfo())
+        var kept: Set<Int> = []
+        for index in foldedSet {
+            if index < newRanges.count { kept.insert(index) }
+        }
+        foldableRanges = newRanges
+        foldedSet = kept
+        recomputeFoldedRanges()
+    }
+
+    private func recomputeFoldedRanges() {
+        foldedRanges = foldedSet.sorted().map { foldableRanges[$0] }
+        refreshVisibleLines()
+        clampCaretToVisible()
+        updateFrameSize()
+        needsDisplay = true
+    }
+
+    /// Keeps the caret on a visible line after a fold (moves it to the end of
+    /// the enclosing marker line).
+    private func clampCaretToVisible() {
+        let line = buffer.lineIndex(atUtf8Offset: caret)
+        guard !isLineVisible(line) else { return }
+        if let range = foldedRanges.first(where: { line > $0.lowerBound && line < $0.upperBound }) {
+            var end = buffer.lineRange(range.lowerBound).upperBound
+            if end > range.lowerBound, buffer[end - 1] == 0x0A { end -= 1 }
+            caret = end
+            anchor = nil
+        }
+    }
+
+    private func toggleFold(atLine line: Int) {
+        guard let index = foldableRanges.firstIndex(where: { $0.lowerBound == line }) else { return }
+        if foldedSet.contains(index) {
+            foldedSet.remove(index)
+        } else {
+            foldedSet.insert(index)
+        }
+        recomputeFoldedRanges()
+    }
+
+    /// Unfolds every range covering the given line (⌘⌥]).
+    private func unfold(atLine line: Int) {
+        var changed = false
+        for index in foldedSet {
+            let range = foldableRanges[index]
+            if line > range.lowerBound && line < range.upperBound {
+                foldedSet.remove(index)
+                changed = true
+            }
+        }
+        if changed { recomputeFoldedRanges() }
+    }
 
     // MARK: - Init
 
@@ -81,6 +188,7 @@ final class EditorView: NSView {
         anchor = nil
         stickyColumn = nil
         syntax.reload(buffer.content)
+        refreshFolds()
         updateFrameSize()
         scroll(NSPoint(x: 0, y: 0))
         needsDisplay = true
@@ -128,13 +236,14 @@ final class EditorView: NSView {
 
     private func updateFrameSize() {
         let width = max(visibleRect.width, gutterWidth + contentWidth + textInsetX * 2)
-        let height = max(visibleRect.height, CGFloat(buffer.lineCount) * lineHeight + textInsetY * 2)
+        let height = max(visibleRect.height, CGFloat(visibleLineCount) * lineHeight + textInsetY * 2)
         setFrameSize(NSSize(width: width, height: height))
     }
 
-    private var visibleLineRange: Range<Int> {
+    /// Visible *rows* in the viewport (folded lines don't consume rows).
+    private var visibleRowRange: Range<Int> {
         let first = max(0, Int(floor((visibleRect.minY - textInsetY) / lineHeight)))
-        let last = min(max(0, buffer.lineCount - 1), Int(ceil((visibleRect.maxY - textInsetY) / lineHeight)))
+        let last = min(max(0, visibleLineCount - 1), Int(ceil((visibleRect.maxY - textInsetY) / lineHeight)))
         return first..<max(first + 1, last + 1)
     }
 
@@ -148,64 +257,67 @@ final class EditorView: NSView {
 
         drawGutter()
         drawSelection()
+        drawFindHighlights()
         drawText()
         drawCaret()
     }
 
-    /// Line-number gutter (4.S1 / issue #28).
+    /// Line-number gutter (4.S1 / issue #28) + fold markers (4.S3).
     private func drawGutter() {
-        let lineRange = visibleLineRange
+        let rowRange = visibleRowRange
         NSColor(calibratedWhite: 0, alpha: 0.04).setFill()
         NSRect(x: 0, y: bounds.minY, width: gutterWidth, height: bounds.height).fill()
 
-        for line in lineRange {
+        for row in rowRange {
+            let line = visibleLines[row]
             let number = "\(line + 1)" as NSString
             let size = number.size(withAttributes: gutterAttributes)
             let point = NSPoint(
                 x: gutterWidth - textInsetX - size.width,
-                y: textInsetY + CGFloat(line) * lineHeight + (lineHeight - size.height) / 2
+                y: textInsetY + CGFloat(row) * lineHeight + (lineHeight - size.height) / 2
             )
             number.draw(at: point, withAttributes: gutterAttributes)
+
+            drawFoldMarkerIfNeeded(line: line, row: row)
         }
 
         NSColor.separatorColor.setFill()
         NSRect(x: gutterWidth - 1, y: bounds.minY, width: 1, height: bounds.height).fill()
     }
 
+    /// ▸ (foldable, unfolded) / ▾ (folded) marker at the left of the gutter.
+    private func drawFoldMarkerIfNeeded(line: Int, row: Int) {
+        guard let index = foldableRanges.firstIndex(where: { $0.lowerBound == line }) else { return }
+        let folded = foldedSet.contains(index)
+        let marker = (folded ? "▾" : "▸") as NSString
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 9, weight: .semibold),
+            .foregroundColor: folded ? NSColor.controlAccentColor : NSColor.secondaryLabelColor,
+        ]
+        marker.draw(at: NSPoint(x: 2, y: textInsetY + CGFloat(row) * lineHeight + (lineHeight - 12) / 2), withAttributes: attrs)
+    }
+
     /// Draws only the visible lines: two O(log n) line lookups + a substring
     /// of the visible region — cost scales with what's on screen, not the
     /// document size (roadmap 2.S3).
     private func drawText() {
-        let lineRange = visibleLineRange
-        let firstLine = lineRange.lowerBound
-        let lastLine = lineRange.upperBound - 1
-        guard buffer.lineCount > 0, firstLine <= lastLine else { return }
-
-        let byteStart = buffer.lineRange(firstLine).lowerBound
-        let byteEnd = buffer.lineRange(lastLine).upperBound
-        let text = buffer.substring(byteStart..<byteEnd)
-
-        var line = firstLine
-        var lineStart = text.startIndex
-        var index = text.startIndex
-        while index < text.endIndex {
-            if text[index] == "\n" {
-                drawLine(String(text[lineStart..<index]), line: line)
-                line += 1
-                lineStart = text.index(after: index)
-                if line > lastLine { break }
-            }
-            index = text.index(after: index)
-        }
-        if line <= lastLine && lineStart < text.endIndex {
-            drawLine(String(text[lineStart...]), line: line)
+        let rowRange = visibleRowRange
+        guard !visibleLines.isEmpty else { return }
+        for row in rowRange {
+            guard row < visibleLines.count else { break }
+            let line = visibleLines[row]
+            let range = buffer.lineRange(line)
+            var end = range.upperBound
+            if end > range.lowerBound && buffer[end - 1] == 0x0A { end -= 1 }
+            let text = buffer.substring(range.lowerBound..<end)
+            drawLine(text, row: row, line: line)
         }
     }
 
-    private func drawLine(_ text: String, line: Int) {
+    private func drawLine(_ text: String, row: Int, line: Int) {
         guard !text.isEmpty else { return }
         let ns = text as NSString
-        let baseY = textInsetY + CGFloat(line) * lineHeight
+        let baseY = textInsetY + CGFloat(row) * lineHeight
         let baseX = gutterWidth + textInsetX
 
         // Split the line into scope runs (UTF-16 offsets from the scope map)
@@ -236,6 +348,7 @@ final class EditorView: NSView {
         let firstLine = buffer.lineIndex(atUtf8Offset: range.lowerBound)
         let lastLine = buffer.lineIndex(atUtf8Offset: max(range.upperBound - 1, 0))
         for line in firstLine...lastLine {
+            guard let row = row(ofLine: line) else { continue }
             let lineRange = buffer.lineRange(line)
             let start = max(range.lowerBound, lineRange.lowerBound)
             var end = min(range.upperBound, lineRange.upperBound)
@@ -251,7 +364,7 @@ final class EditorView: NSView {
             let x1 = gutterWidth + textInsetX + CGFloat(col1) * charWidth
             NSRect(
                 x: x0,
-                y: textInsetY + CGFloat(line) * lineHeight,
+                y: textInsetY + CGFloat(row) * lineHeight,
                 width: max(x1 - x0, 1),
                 height: lineHeight
             ).fill()
@@ -260,11 +373,12 @@ final class EditorView: NSView {
 
     private func drawCaret() {
         let (line, column) = buffer.lineColumn(atUtf8Offset: caret)
+        guard let row = row(ofLine: line) else { return }
         let x = gutterWidth + textInsetX + CGFloat(column) * charWidth
         NSColor.textColor.setFill()
         NSRect(
             x: x,
-            y: textInsetY + CGFloat(line) * lineHeight,
+            y: textInsetY + CGFloat(row) * lineHeight,
             width: caretWidth,
             height: lineHeight
         ).fill()
@@ -272,9 +386,12 @@ final class EditorView: NSView {
 
     private func caretRect() -> NSRect {
         let (line, column) = buffer.lineColumn(atUtf8Offset: caret)
+        guard let row = row(ofLine: line) else {
+            return NSRect(x: gutterWidth + textInsetX, y: textInsetY, width: caretWidth, height: lineHeight)
+        }
         return NSRect(
             x: gutterWidth + textInsetX + CGFloat(column) * charWidth,
-            y: textInsetY + CGFloat(line) * lineHeight,
+            y: textInsetY + CGFloat(row) * lineHeight,
             width: caretWidth,
             height: lineHeight
         )
@@ -282,6 +399,169 @@ final class EditorView: NSView {
 
     private func scrollCaretToVisible() {
         scrollToVisible(caretRect().insetBy(dx: -24, dy: -12))
+    }
+
+    // MARK: - Find & Replace (4.S4)
+
+    /// Recomputes matches for the query. Preserves the active match when it
+    /// still exists; otherwise the first match at/after the caret.
+    func updateFind(query: String, caseSensitive: Bool = false) {
+        findQuery = query
+        findCaseSensitive = caseSensitive
+        guard !query.isEmpty else {
+            findMatches = []
+            currentFindIndex = -1
+            onFindStateChange?()
+            needsDisplay = true
+            return
+        }
+        let options: NSRegularExpression.Options = caseSensitive
+            ? [.anchorsMatchLines]
+            : [.caseInsensitive, .anchorsMatchLines]
+        guard let regex = try? NSRegularExpression(pattern: query, options: options) else {
+            findMatches = []
+            currentFindIndex = -1
+            onFindStateChange?()
+            needsDisplay = true
+            return
+        }
+        let content = buffer.content
+        let ns = content as NSString
+        var matches: [Range<Int>] = []
+        regex.enumerateMatches(in: content, range: NSRange(location: 0, length: ns.length)) { match, _, _ in
+            guard let match else { return }
+            let start = buffer.byteOffset(fromUTF16Offset: match.range.location)
+            let end = buffer.byteOffset(fromUTF16Offset: match.range.location + match.range.length)
+            matches.append(start..<end)
+        }
+        findMatches = matches
+        if let current = currentFindRange, let index = matches.firstIndex(where: { $0 == current }) {
+            currentFindIndex = index
+        } else {
+            currentFindIndex = matches.firstIndex { $0.lowerBound >= caret } ?? (matches.isEmpty ? -1 : 0)
+        }
+        onFindStateChange?()
+        needsDisplay = true
+    }
+
+    @discardableResult
+    func findNext() -> Bool {
+        guard !findMatches.isEmpty else { return false }
+        var index: Int
+        if let current = currentFindRange, let found = findMatches.firstIndex(of: current) {
+            index = found + 1
+        } else {
+            index = findMatches.firstIndex { $0.lowerBound >= caret } ?? 0
+        }
+        if index >= findMatches.count { index = 0 }
+        currentFindIndex = index
+        selectCurrentFindMatch()
+        return true
+    }
+
+    @discardableResult
+    func findPrevious() -> Bool {
+        guard !findMatches.isEmpty else { return false }
+        var index: Int
+        if let current = currentFindRange, let found = findMatches.firstIndex(of: current) {
+            index = found - 1
+        } else {
+            index = findMatches.lastIndex { $0.lowerBound <= caret } ?? findMatches.count - 1
+        }
+        if index < 0 { index = findMatches.count - 1 }
+        currentFindIndex = index
+        selectCurrentFindMatch()
+        return true
+    }
+
+    private func selectCurrentFindMatch() {
+        guard let range = currentFindRange else { return }
+        buffer.breakUndoCoalescing()
+        anchor = range.lowerBound
+        caret = range.upperBound
+        stickyColumn = nil
+        scrollCaretToVisible()
+        needsDisplay = true
+    }
+
+    /// Replaces the active match; then jumps to the next one (replace-and-find).
+    @discardableResult
+    func replaceCurrentFindMatch(with replacement: String) -> Bool {
+        guard let range = currentFindRange else { return false }
+        trackEditRange(range)
+        buffer.replace(range, with: replacement)
+        caret = range.lowerBound + replacement.utf8.count
+        anchor = nil
+        stickyColumn = nil
+        didEdit()
+        findNext()
+        return true
+    }
+
+    /// Replaces every match in one undo step (offsets are computed against the
+    /// original content, so replacement order doesn't matter).
+    @discardableResult
+    func replaceAllFindMatches(with replacement: String) -> Int {
+        guard !findMatches.isEmpty else { return 0 }
+        let content = buffer.content
+        let ns = content as NSString
+        var result = ""
+        var cursor = 0
+        for range in findMatches {
+            let utf16Start = buffer.utf16Offset(fromByteOffset: range.lowerBound)
+            let utf16End = buffer.utf16Offset(fromByteOffset: range.upperBound)
+            result += ns.substring(with: NSRange(location: cursor, length: utf16Start - cursor))
+            result += replacement
+            cursor = utf16End
+        }
+        result += ns.substring(from: cursor)
+        trackEditRange(0..<buffer.utf8Length)
+        buffer.replace(0..<buffer.utf8Length, with: result)
+        caret = min(caret, buffer.utf8Length)
+        anchor = nil
+        stickyColumn = nil
+        didEdit()
+        return findMatches.count
+    }
+
+    // Responder-chain actions for the Edit ▸ Find menu (also reachable from
+    // the find bar's own fields via the responder chain).
+    @objc func showFindBar(_ sender: Any?) { onShowFindBar?() }
+    @objc func findNext(_ sender: Any?) { _ = findNext() }
+    @objc func findPrevious(_ sender: Any?) { _ = findPrevious() }
+
+    /// Highlights every find match (active match more strongly), under the text.
+    private func drawFindHighlights() {
+        guard !findMatches.isEmpty else { return }
+        for (index, range) in findMatches.enumerated() {
+            drawMatchHighlight(range, current: index == currentFindIndex)
+        }
+    }
+
+    private func drawMatchHighlight(_ range: Range<Int>, current: Bool) {
+        let firstLine = buffer.lineIndex(atUtf8Offset: range.lowerBound)
+        let lastLine = buffer.lineIndex(atUtf8Offset: max(range.upperBound - 1, range.lowerBound))
+        for line in firstLine...lastLine {
+            guard let row = row(ofLine: line) else { continue }
+            let lineRange = buffer.lineRange(line)
+            let start = max(range.lowerBound, lineRange.lowerBound)
+            var end = min(range.upperBound, lineRange.upperBound)
+            if end <= start { continue }
+            if end == lineRange.upperBound && end > start && buffer[end - 1] == 0x0A { end -= 1 }
+            if end <= start { continue }
+            let col0 = buffer.lineColumn(atUtf8Offset: start).column
+            let col1 = buffer.lineColumn(atUtf8Offset: end).column
+            let fill = current
+                ? (NSColor.systemYellow.blended(withFraction: 0.45, of: .orange) ?? .systemYellow)
+                : NSColor.systemYellow.withAlphaComponent(0.32)
+            fill.setFill()
+            NSRect(
+                x: gutterWidth + textInsetX + CGFloat(col0) * charWidth,
+                y: textInsetY + CGFloat(row) * lineHeight,
+                width: max(CGFloat(col1 - col0) * charWidth, 1),
+                height: lineHeight
+            ).fill()
+        }
     }
 
     // MARK: - Selection helpers
@@ -323,8 +603,9 @@ final class EditorView: NSView {
     // MARK: - Mouse
 
     private func byteOffset(at point: NSPoint) -> Int {
-        guard buffer.lineCount > 0 else { return 0 }
-        let line = max(0, min(buffer.lineCount - 1, Int(floor((point.y - textInsetY) / lineHeight))))
+        guard !visibleLines.isEmpty else { return 0 }
+        let row = max(0, min(visibleLineCount - 1, Int(floor((point.y - textInsetY) / lineHeight))))
+        let line = visibleLines[row]
         let column = max(0, Int(floor((point.x - gutterWidth - textInsetX) / charWidth)))
         return buffer.byteOffset(atLine: line, utf16Column: column)
     }
@@ -332,6 +613,19 @@ final class EditorView: NSView {
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         let point = convert(event.locationInWindow, from: nil)
+
+        // Gutter clicks toggle fold markers (4.S3).
+        if point.x < gutterWidth, !foldableRanges.isEmpty {
+            let row = max(0, Int(floor((point.y - textInsetY) / lineHeight)))
+            if row < visibleLines.count {
+                let line = visibleLines[row]
+                if foldableRanges.contains(where: { $0.lowerBound == line }) {
+                    toggleFold(atLine: line)
+                    return
+                }
+            }
+        }
+
         let offset = byteOffset(at: point)
         if event.clickCount == 2 {
             selectWord(around: offset)
@@ -368,12 +662,28 @@ final class EditorView: NSView {
         switch event.keyCode {
         case 36, 76:                    // Return / keypad Enter
             insertText("\n")
-        case 48:                        // Tab
-            insertText("\t")
+        case 48:                        // Tab — next/previous snippet field
+            if !snippetStack.isEmpty {
+                if shift { _ = snippetStack.previous() } else { _ = snippetStack.next() }
+                if !snippetStack.isEmpty {
+                    let current = snippetStack.current()
+                    caret = current.to.offset + snippetAnchor
+                    anchor = nil
+                    stickyColumn = nil
+                    scrollCaretToVisible()
+                    needsDisplay = true
+                }
+            } else {
+                insertText("\t")
+            }
         case 51:                        // Delete (backspace)
             deleteBackward()
         case 117:                       // fn + Delete
             deleteForward()
+        case 33:                        // ⌘⌥[ — fold at the caret line
+            if command && option { toggleFold(atLine: buffer.lineIndex(atUtf8Offset: caret)) }
+        case 30:                        // ⌘⌥] — unfold
+            if command && option { unfold(atLine: buffer.lineIndex(atUtf8Offset: caret)) }
         case 123:                       // Left arrow
             if command { moveLineStart(shift: shift) } else { moveHorizontal(-1, shift: shift, word: option) }
         case 124:                       // Right arrow
@@ -386,8 +696,15 @@ final class EditorView: NSView {
             moveLineStart(shift: shift)
         case 119:                       // End
             moveLineEnd(shift: shift)
-        case 53:                        // Escape
-            break
+        case 3:                         // ⌘F — show the find bar
+            if command { onShowFindBar?() }
+        case 5:                         // ⌘G / ⇧⌘G — next / previous match
+            if command { shift ? findPrevious() : findNext() }
+        case 53:                        // Escape — drop the snippet stack
+            if !snippetStack.isEmpty {
+                snippetStack.clear()
+                needsDisplay = true
+            }
         default:
             if command {
                 super.keyDown(with: event)
@@ -411,11 +728,68 @@ final class EditorView: NSView {
         lastEditEndLine = buffer.lineIndex(atUtf8Offset: endByte)
     }
 
+    // MARK: - Snippets (4.S5)
+
+    private var snippetStack = Snippet.Stack()
+    /// Buffer offset where the active snippet text starts (the C++ `anchor`).
+    private var snippetAnchor = 0
+
+    /// Routes an edit through the snippet stack (mirror updates, field
+    /// dropping) and returns the new caret position.
+    private func snippetReplace(range: Range<Int>, with text: String) -> Int {
+        let local = TextFormatString.Range(range.lowerBound - snippetAnchor, range.upperBound - snippetAnchor)
+        let pairs = snippetStack.replace(range: local, replacement: text)
+        var adjustment = 0
+        var caret = range.lowerBound
+        for (pairRange, pairStr) in pairs {
+            let from = pairRange.from.offset + snippetAnchor + adjustment
+            let to = pairRange.to.offset + snippetAnchor + adjustment
+            let clampedFrom = max(0, min(buffer.utf8Length, from))
+            let clampedTo = max(clampedFrom, min(buffer.utf8Length, to))
+            buffer.replace(clampedFrom..<clampedTo, with: pairStr)
+            caret = clampedFrom + pairStr.utf8.count
+            adjustment += pairStr.utf8.count - (clampedTo - clampedFrom)
+        }
+        if !snippetStack.isEmpty {
+            let current = snippetStack.current()
+            caret = current.to.offset + snippetAnchor
+        }
+        return caret
+    }
+
+    /// Inserts a snippet at the caret/selection (Bundles ▸ Insert Snippet…).
+    @objc func insertSnippet(_ sender: Any?) {
+        let alert = NSAlert()
+        alert.messageText = "Insert Snippet"
+        alert.informativeText = "$1/$2 tab stops, ${1:default}, ${1/pattern/format/} mirrors, ${1|a,b|}: "
+        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 340, height: 24))
+        alert.accessoryView = input
+        alert.addButton(withTitle: "Insert")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let snippetText = input.stringValue
+        guard !snippetText.isEmpty else { return }
+        let insertRange = selectedRange ?? (caret..<caret)
+        trackEditRange(insertRange)
+        let snippet = TextFormatString.parseSnippet(snippetText)
+        if snippetStack.isEmpty { snippetAnchor = insertRange.lowerBound }
+        buffer.replace(insertRange, with: snippet.string)
+        let field = snippet.fields[snippet.currentField]
+        let fieldRange = field?.range ?? TextFormatString.Range(snippet.string.utf8.count, snippet.string.utf8.count)
+        snippetStack.push(snippet, range: fieldRange)
+        caret = insertRange.lowerBound + fieldRange.to.offset
+        anchor = nil
+        stickyColumn = nil
+        didEdit()
+    }
+
     private func insertText(_ text: String) {
         guard !text.isEmpty else { return }
         let range = selectedRange ?? (caret..<caret)
         trackEditRange(range)
-        if let range = selectedRange {
+        if !snippetStack.isEmpty {
+            caret = snippetReplace(range: range, with: text)
+        } else if let range = selectedRange {
             buffer.replace(range, with: text)
             caret = range.lowerBound + text.utf8.count
             anchor = nil
@@ -428,6 +802,15 @@ final class EditorView: NSView {
     }
 
     private func deleteBackward() {
+        if !snippetStack.isEmpty {
+            let range = selectedRange ?? (caret > 0 ? (buffer.previousCharacterBoundary(before: caret)..<caret) : nil)
+            guard let range else { NSSound.beep(); return }
+            trackEditRange(range)
+            caret = snippetReplace(range: range, with: "")
+            stickyColumn = nil
+            didEdit()
+            return
+        }
         if let range = selectedRange {
             trackEditRange(range)
             buffer.erase(range)
@@ -447,6 +830,15 @@ final class EditorView: NSView {
     }
 
     private func deleteForward() {
+        if !snippetStack.isEmpty {
+            let range = selectedRange ?? (caret < buffer.utf8Length ? (caret..<buffer.nextCharacterBoundary(after: caret)) : nil)
+            guard let range else { NSSound.beep(); return }
+            trackEditRange(range)
+            caret = snippetReplace(range: range, with: "")
+            stickyColumn = nil
+            didEdit()
+            return
+        }
         if let range = selectedRange {
             trackEditRange(range)
             buffer.erase(range)
@@ -466,6 +858,8 @@ final class EditorView: NSView {
 
     private func didEdit() {
         syntax.updateText(buffer.content, fromLine: lastEditLine, endLine: lastEditEndLine)
+        if !findQuery.isEmpty { updateFind(query: findQuery, caseSensitive: findCaseSensitive) }
+        refreshFolds()
         onChange?()
         updateFrameSize()
         needsDisplay = true
@@ -504,7 +898,13 @@ final class EditorView: NSView {
         let column = stickyColumn ?? buffer.lineColumn(atUtf8Offset: caret).column
         stickyColumn = column
         let currentLine = buffer.lineIndex(atUtf8Offset: caret)
-        let targetLine = max(0, min(buffer.lineCount - 1, currentLine + delta))
+        guard let currentRow = row(ofLine: currentLine) else {
+            // Caret on a hidden line — move to the fold boundary first.
+            clampCaretToVisible()
+            return
+        }
+        let targetRow = max(0, min(visibleLineCount - 1, currentRow + delta))
+        let targetLine = visibleLines[targetRow]
         let target = buffer.byteOffset(atLine: targetLine, utf16Column: column)
         applyCaretMove(to: target, shift: shift)
     }
