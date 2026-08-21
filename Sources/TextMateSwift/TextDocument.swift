@@ -14,22 +14,33 @@ final class TextDocument: NSDocument {
     /// Detected charset of the file (used to re-encode on save).
     private(set) var charset: TextTranscode.Charset = .utf8
 
+    /// Text read from disk before any window existed. NSDocument calls
+    /// `read(from:ofType:)` before `makeWindowControllers()`, so at read time
+    /// the windowControllers array is empty; stage the content here and hand
+    /// it to the editor when the window is created.
+    private var loadedText: String?
+
     override func makeWindowControllers() {
         let controller = EditorWindowController()
         controller.editorView.onChange = { [weak self] in
             self?.updateChangeCount(.changeDone)
         }
         addWindowController(controller)
-        controller.editorView.load(bufferForDisplay())
+        if let text = loadedText {
+            // First window for a document that was read from disk.
+            controller.editorView.load(Buffer(text))
+            loadedText = nil
+        } else if let first = windowControllers.first as? EditorWindowController, first.editorView !== controller.editorView {
+            // Additional window for an already-shown document.
+            controller.editorView.load(first.editorView.buffer)
+        } else {
+            // Brand-new (untitled) document.
+            controller.editorView.load(Buffer())
+        }
     }
 
     private var editorView: EditorView? {
         (windowControllers.first as? EditorWindowController)?.editorView
-    }
-
-    /// The buffer currently shown in the (first) window; empty if none yet.
-    private func bufferForDisplay() -> Buffer {
-        editorView?.buffer ?? Buffer()
     }
 
     override func read(from data: Data, ofType typeName: String) throws {
@@ -39,6 +50,8 @@ final class TextDocument: NSDocument {
             throw CocoaError(.fileReadCorruptFile)
         }
         charset = detected
+        loadedText = text
+        // Revert / re-read after the window exists: reload every window.
         for controller in windowControllers {
             (controller as? EditorWindowController)?.editorView.load(Buffer(text))
         }
