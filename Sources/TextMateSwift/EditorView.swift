@@ -26,12 +26,16 @@ final class EditorView: NSView {
     /// Called after every user edit (content change) — used for dirty tracking.
     var onChange: (() -> Void)?
 
+    /// Per-line grammar state driving syntax highlighting (4.S2).
+    private let syntax: SyntaxParser
+
     // MARK: - Metrics & constants
 
     private let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
     private let textInsetX: CGFloat = 8
     private let textInsetY: CGFloat = 4
     private let caretWidth: CGFloat = 2
+    private let gutterWidth: CGFloat = 52
 
     private lazy var lineHeight: CGFloat = NSLayoutManager().defaultLineHeight(for: font)
     private lazy var charWidth: CGFloat = ceil("M".size(withAttributes: [.font: font]).width)
@@ -39,6 +43,15 @@ final class EditorView: NSView {
         .font: font,
         .foregroundColor: NSColor.textColor,
     ]
+    private lazy var gutterAttributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
+        .foregroundColor: NSColor.secondaryLabelColor,
+    ]
+
+    /// Line range of the most recent edit — the incremental repair point for
+    /// syntax highlighting.
+    private var lastEditLine = 0
+    private var lastEditEndLine = 0
 
     /// Column (in UTF-16 units) preserved across vertical caret moves so moving
     /// up/down past shorter lines returns to the original column.
@@ -48,8 +61,10 @@ final class EditorView: NSView {
 
     init(frame frameRect: NSRect, buffer: Buffer = Buffer()) {
         self.buffer = buffer
+        self.syntax = SyntaxParser(grammar: Grammar(plist: BuiltInGrammar.plist)!)
         super.init(frame: frameRect)
         updateFrameSize()
+        syntax.reload(buffer.content)
     }
 
     required init?(coder: NSCoder) {
@@ -62,6 +77,7 @@ final class EditorView: NSView {
         caret = 0
         anchor = nil
         stickyColumn = nil
+        syntax.reload(buffer.content)
         updateFrameSize()
         scroll(NSPoint(x: 0, y: 0))
         needsDisplay = true
@@ -108,7 +124,7 @@ final class EditorView: NSView {
     }
 
     private func updateFrameSize() {
-        let width = max(visibleRect.width, contentWidth + textInsetX * 2)
+        let width = max(visibleRect.width, gutterWidth + contentWidth + textInsetX * 2)
         let height = max(visibleRect.height, CGFloat(buffer.lineCount) * lineHeight + textInsetY * 2)
         setFrameSize(NSSize(width: width, height: height))
     }
@@ -127,9 +143,30 @@ final class EditorView: NSView {
         NSColor.textBackgroundColor.setFill()
         bounds.fill()
 
+        drawGutter()
         drawSelection()
         drawText()
         drawCaret()
+    }
+
+    /// Line-number gutter (4.S1 / issue #28).
+    private func drawGutter() {
+        let lineRange = visibleLineRange
+        NSColor(calibratedWhite: 0, alpha: 0.04).setFill()
+        NSRect(x: 0, y: bounds.minY, width: gutterWidth, height: bounds.height).fill()
+
+        for line in lineRange {
+            let number = "\(line + 1)" as NSString
+            let size = number.size(withAttributes: gutterAttributes)
+            let point = NSPoint(
+                x: gutterWidth - textInsetX - size.width,
+                y: textInsetY + CGFloat(line) * lineHeight + (lineHeight - size.height) / 2
+            )
+            number.draw(at: point, withAttributes: gutterAttributes)
+        }
+
+        NSColor.separatorColor.setFill()
+        NSRect(x: gutterWidth - 1, y: bounds.minY, width: 1, height: bounds.height).fill()
     }
 
     /// Draws only the visible lines: two O(log n) line lookups + a substring
@@ -164,8 +201,29 @@ final class EditorView: NSView {
 
     private func drawLine(_ text: String, line: Int) {
         guard !text.isEmpty else { return }
-        let point = NSPoint(x: textInsetX, y: textInsetY + CGFloat(line) * lineHeight)
-        (text as NSString).draw(at: point, withAttributes: textAttributes)
+        let ns = text as NSString
+        let baseY = textInsetY + CGFloat(line) * lineHeight
+        let baseX = gutterWidth + textInsetX
+
+        // Split the line into scope runs (UTF-16 offsets from the scope map)
+        // and draw each run in its theme color.
+        let scopeMap = syntax.scopes(forLine: line)
+        if scopeMap.isEmpty {
+            ns.draw(at: NSPoint(x: baseX, y: baseY), withAttributes: textAttributes)
+            return
+        }
+        let entries = scopeMap.sorted { $0.key < $1.key }
+        var cursor = 0
+        for (index, entry) in entries.enumerated() {
+            let from = max(entry.key, cursor)
+            let to = index + 1 < entries.count ? entries[index + 1].key : ns.length
+            if to <= from { continue }
+            var attributes = textAttributes
+            attributes[.foregroundColor] = SyntaxTheme.color(for: entry.value)
+            let run = ns.substring(with: NSRange(location: from, length: to - from))
+            (run as NSString).draw(at: NSPoint(x: baseX + CGFloat(from) * charWidth, y: baseY), withAttributes: attributes)
+            cursor = to
+        }
     }
 
     private func drawSelection() {
@@ -186,8 +244,8 @@ final class EditorView: NSView {
             if end <= start { continue }
             let col0 = buffer.lineColumn(atUtf8Offset: start).column
             let col1 = buffer.lineColumn(atUtf8Offset: end).column
-            let x0 = textInsetX + CGFloat(col0) * charWidth
-            let x1 = textInsetX + CGFloat(col1) * charWidth
+            let x0 = gutterWidth + textInsetX + CGFloat(col0) * charWidth
+            let x1 = gutterWidth + textInsetX + CGFloat(col1) * charWidth
             NSRect(
                 x: x0,
                 y: textInsetY + CGFloat(line) * lineHeight,
@@ -199,7 +257,7 @@ final class EditorView: NSView {
 
     private func drawCaret() {
         let (line, column) = buffer.lineColumn(atUtf8Offset: caret)
-        let x = textInsetX + CGFloat(column) * charWidth
+        let x = gutterWidth + textInsetX + CGFloat(column) * charWidth
         NSColor.textColor.setFill()
         NSRect(
             x: x,
@@ -212,7 +270,7 @@ final class EditorView: NSView {
     private func caretRect() -> NSRect {
         let (line, column) = buffer.lineColumn(atUtf8Offset: caret)
         return NSRect(
-            x: textInsetX + CGFloat(column) * charWidth,
+            x: gutterWidth + textInsetX + CGFloat(column) * charWidth,
             y: textInsetY + CGFloat(line) * lineHeight,
             width: caretWidth,
             height: lineHeight
@@ -264,7 +322,7 @@ final class EditorView: NSView {
     private func byteOffset(at point: NSPoint) -> Int {
         guard buffer.lineCount > 0 else { return 0 }
         let line = max(0, min(buffer.lineCount - 1, Int(floor((point.y - textInsetY) / lineHeight))))
-        let column = max(0, Int(floor((point.x - textInsetX) / charWidth)))
+        let column = max(0, Int(floor((point.x - gutterWidth - textInsetX) / charWidth)))
         return buffer.byteOffset(atLine: line, utf16Column: column)
     }
 
@@ -342,8 +400,18 @@ final class EditorView: NSView {
 
     // MARK: - Editing (all edits go through the buffer's undo stack)
 
+    /// Records the affected line range for a byte range that is about to be
+    /// replaced/erased (the end line is computed pre-mutation).
+    private func trackEditRange(_ range: Range<Int>) {
+        lastEditLine = buffer.lineIndex(atUtf8Offset: range.lowerBound)
+        let endByte = max(range.upperBound - 1, range.lowerBound)
+        lastEditEndLine = buffer.lineIndex(atUtf8Offset: endByte)
+    }
+
     private func insertText(_ text: String) {
         guard !text.isEmpty else { return }
+        let range = selectedRange ?? (caret..<caret)
+        trackEditRange(range)
         if let range = selectedRange {
             buffer.replace(range, with: text)
             caret = range.lowerBound + text.utf8.count
@@ -358,11 +426,13 @@ final class EditorView: NSView {
 
     private func deleteBackward() {
         if let range = selectedRange {
+            trackEditRange(range)
             buffer.erase(range)
             caret = range.lowerBound
             anchor = nil
         } else if caret > 0 {
             let start = buffer.previousCharacterBoundary(before: caret)
+            trackEditRange(start..<caret)
             buffer.erase(start..<caret)
             caret = start
         } else {
@@ -375,11 +445,13 @@ final class EditorView: NSView {
 
     private func deleteForward() {
         if let range = selectedRange {
+            trackEditRange(range)
             buffer.erase(range)
             caret = range.lowerBound
             anchor = nil
         } else if caret < buffer.utf8Length {
             let end = buffer.nextCharacterBoundary(after: caret)
+            trackEditRange(caret..<end)
             buffer.erase(caret..<end)
         } else {
             NSSound.beep()
@@ -390,6 +462,7 @@ final class EditorView: NSView {
     }
 
     private func didEdit() {
+        syntax.updateText(buffer.content, fromLine: lastEditLine, endLine: lastEditEndLine)
         onChange?()
         updateFrameSize()
         needsDisplay = true
@@ -483,6 +556,8 @@ final class EditorView: NSView {
         caret = newCaret
         anchor = nil
         stickyColumn = nil
+        lastEditLine = 0
+        lastEditEndLine = buffer.lineCount - 1
         didEdit()
     }
 
@@ -491,6 +566,8 @@ final class EditorView: NSView {
         caret = newCaret
         anchor = nil
         stickyColumn = nil
+        lastEditLine = 0
+        lastEditEndLine = buffer.lineCount - 1
         didEdit()
     }
 
@@ -504,6 +581,7 @@ final class EditorView: NSView {
     @objc func cut(_ sender: Any?) {
         guard let range = selectedRange else { NSSound.beep(); return }
         copy(sender)
+        trackEditRange(range)
         buffer.erase(range)
         caret = range.lowerBound
         anchor = nil
