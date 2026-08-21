@@ -65,6 +65,15 @@ the grammar stack + bundles (4.T1/4.T2/4.T3/4.S1/4.S2/4.S6)**.
 only open roadmap item; every Phase-4 story is delivered and the remaining
 issue backlog is empty.
 
+**Next: v0.4+.** The engine is complete; the editing surface is ~40% of the
+original. The prioritized backlog — acceptance criteria, effort, dependencies,
+and original-source references — lives in
+[docs/next-versions.md](docs/next-versions.md) and is mirrored as GitHub
+issues #38–#60. The full menu/feature gap analysis against original TextMate
+is [docs/feature-comparison.md](docs/feature-comparison.md). A session
+handoff (architecture notes, verification habits, known gaps) is
+[HANDOFF.md](HANDOFF.md).
+
 **Repo chores (blocked on repo admin):** kanban board (`gh auth refresh -s project`),
 branch protection on `main`, Apple release secrets for the notarized CD leg.
 

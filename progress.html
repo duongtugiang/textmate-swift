@@ -248,6 +248,14 @@ appended at the bottom, newest last. Source of truth for statuses: the
 <div class="how"><span class="label">How:</span> the format-string engine was verified case-by-case against the real Onigmo engine (compiled standalone from source with TextMate's RUBY syntax config) — ICU anchors ^ to the search region, so replace() iterates the full range to reproduce Oniguruma's buffer-anchored ^; \p{^X} normalizes to \P{X}; asciify uses "Any-Latin; Latin-ASCII"; capitalize is the exact two-pass word/upcase regexes. The snippet engine traces the C++ stack/replace_helper semantics, including the running-adjustment application of pre-edit mirror ranges. Tests: t_format_string 7/7 + t_snippets ported — 126 total green; app builds, runs, folding verified in the live app.</div>
 </div>
 
+<div class="entry">
+<h3>docs: handoff + feature comparison + v0.4+ backlog (issues #38–#60)</h3>
+<div class="meta">2026-08-21</div>
+<div class="why"><span class="label">Why:</span> Phase 4 is complete and the backlog was empty; the next session needs a handoff, and the editing-surface gap vs original TextMate needed a documented, prioritized plan.</div>
+<div class="what"><span class="label">What:</span> HANDOFF.md (repo map, build/test/release, architecture notes, verification habits, known gaps); docs/feature-comparison.md (every original TextMate menu item + editing feature marked ✅/🔶/❌); docs/next-versions.md (23 stories across v0.4 editing essentials / v0.5 view &amp; navigate / v0.6 power editing, with acceptance criteria and original-source references), mirrored as GitHub issues #38–#60 with kind/effort/epic labels.</div>
+<div class="how"><span class="label">How:</span> the menu inventory was extracted verbatim from the original AppController.mm -mainMenu table and the bundled TextMate Help; our surface was audited from main.swift / EditorView / FindBar; issues created via the gh CLI with the established label scheme.</div>
+</div>
+
 <!-- ================= APPEND NEW ENTRIES ABOVE THIS LINE (newest last) ================= -->
 
 </body>
